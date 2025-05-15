@@ -1,0 +1,36 @@
+# Entornos virtuales
+venv/
+env/
+.venv/
+.env
+
+# Archivos de configuración sensibles
+.env
+config.py
+anon.session
+
+# Archivos de base de datos y datos temporales
+db.json
+
+# Archivos de logs
+*.log
+
+# Archivos de Python compilados
+__pycache__/
+*.pyc
+*.pyo
+
+# Directorios y archivos de Docker
+Dockerfile
+docker-compose.yml
+
+# Directorios de sistema/IDE
+.vscode/
+.idea/
+
+# Otros directorios que no quieres trackear
+C/
+
+# Archivos temporales
+*.tmp
+*.swp
