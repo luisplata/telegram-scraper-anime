@@ -14,7 +14,7 @@ def buscar_anime_en_api(nombre_anime):
         print(f"Error buscando anime: {e}")
         return []
 
-def formatear_payload(anime: dict, cap_num: int, link: str):
+def formatear_payload(anime: dict, cap_num: int, link: str, etiqueta_audio: str):
     caps = anime.get("caps", [])
 
     # Asegura que name sea una lista de strings
@@ -35,7 +35,7 @@ def formatear_payload(anime: dict, cap_num: int, link: str):
         "link": link,
         "source": [
             {
-                "name": "streamhg",
+                "name": f"streamhg {etiqueta_audio}",
                 "url": link
             }
         ]
@@ -69,13 +69,13 @@ def enviar_webhook(anime_data):
         print(f"Error al enviar webhook: {e}")
         return False
 
-def compartir_anime(nombre_anime, cap_num, link):
+def compartir_anime(nombre_anime, cap_num, link, etiqueta_audio):
     resultados = buscar_anime_en_api(nombre_anime)
 
     if len(resultados) == 1:
         anime = resultados[0]
         print(anime)
-        payload = formatear_payload(anime, cap_num, link)
+        payload = formatear_payload(anime, cap_num, link, etiqueta_audio)
         exito = enviar_webhook(payload)
         return exito
     else:
@@ -90,7 +90,7 @@ def compartir_anime(nombre_anime, cap_num, link):
         if mejores and mejores[0][0] > 80:  # Puedes ajustar el umbral
             mejor_anime = mejores[0][1]
             print(f"Mejor coincidencia: {mejor_anime['title']} ({mejores[0][0]:.2f}%)")
-            payload = formatear_payload(mejor_anime, cap_num, link)
+            payload = formatear_payload(mejor_anime, cap_num, link, etiqueta_audio)
             exito = enviar_webhook(payload)
             return exito
         else:
