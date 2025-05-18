@@ -7,15 +7,31 @@ from telethon.sync import TelegramClient
 from sharer import buscar_anime_en_api, compartir_anime
 import os
 from datetime import datetime
+import csv
+
+def guardar_log_ejecucion(nombre_anime, cap_num, inicio, fin, duracion):
+    log_path = "historico_ejecuciones.log"
+    existe = os.path.exists(log_path)
+    with open(log_path, "a", newline='', encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if not existe:
+            writer.writerow(["anime", "capitulo", "hora_inicio", "hora_fin", "duracion"])
+        writer.writerow([
+            nombre_anime,
+            cap_num,
+            inicio.strftime("%Y-%m-%d %H:%M:%S"),
+            fin.strftime("%Y-%m-%d %H:%M:%S"),
+            str(duracion)
+        ])
 
 def main():
     max_anime_to_process = MAX_CAPS
     anime_to_process = 0
     offset_id = 0
-    start_time = datetime.now()
-    print("Hora inicio:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
     with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
-        while anime_to_process < max_anime_to_process:
+        while anime_to_process < max_anime_to_process: 
+            start_time = datetime.now()
+            print("Hora inicio:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
             mensajes = obtener_mensajes_recientes(client, limit=50, offset_id=offset_id)
             if not mensajes:
                 print("No se encontraron mensajes para procesar.")
@@ -74,16 +90,18 @@ def main():
                         actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
                         anime_to_process += 1
                         print(f"Anime procesado: {nombre_anime} Capítulo {cap_num} total: {anime_to_process}")
+                        end_time = datetime.now()
+                        duracion = end_time - start_time
+                        print("Hora fin:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
+                        print("Duración:", str(end_time - start_time))
+                        guardar_log_ejecucion(nombre_anime, cap_num, start_time, end_time, duracion)
                         
                 if anime_to_process >= max_anime_to_process:
                     break
             offset_id = mensajes[-1].id
             print(f"Offset ID actualizado a: {offset_id}")
         
-        end_time = datetime.now()
         print("\nProceso completo.")
-        print("Hora fin:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
-        print("Duración:", str(end_time - start_time))
 
 if __name__ == "__main__":
     main()
