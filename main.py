@@ -6,11 +6,13 @@ from config import VIEW_URL, SESSION_NAME, API_ID, API_HASH, MAX_CAPS
 from telethon.sync import TelegramClient
 from sharer import buscar_anime_en_api, compartir_anime
 import os
+from datetime import datetime
 
 def main():
     max_anime_to_process = MAX_CAPS
     anime_to_process = 0
     offset_id = 0
+    print("Hora inicio:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
         while anime_to_process < max_anime_to_process:
             mensajes = obtener_mensajes_recientes(client, limit=50, offset_id=offset_id)
@@ -78,6 +80,7 @@ def main():
             print(f"Offset ID actualizado a: {offset_id}")
 
         print("\nProceso completo.")
+        print("Hora inicio:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 if __name__ == "__main__":
     main()
