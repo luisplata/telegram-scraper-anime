@@ -2,13 +2,13 @@ from telegram_client import obtener_mensajes_recientes, descargar_video_de_mensa
 from uploader import subir_video, eliminar_archivo
 from utils import formatear_nombre_video, limpiar_nombre
 from db_manager import agregar_anime, actualizar_estado_anime, buscar_anime
-from config import VIEW_URL, SESSION_NAME, API_ID, API_HASH
+from config import VIEW_URL, SESSION_NAME, API_ID, API_HASH, MAX_CAPS
 from telethon.sync import TelegramClient
 from sharer import buscar_anime_en_api, compartir_anime
 import os
 
 def main():
-    max_anime_to_process = 10
+    max_anime_to_process = MAX_CAPS
     anime_to_process = 0
     offset_id = 0
     with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:

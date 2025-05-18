@@ -11,6 +11,7 @@ VIEW_URL = os.getenv("VIEW_URL")
 API_SEARCH_URL = os.getenv("API_SEARCH_URL")
 API_WEBHOOK_URL = os.getenv("API_WEBHOOK_URL")
 API_WEBHOOK_TOKEN = os.getenv("API_WEBHOOK_TOKEN")
+MAX_CAPS=int(os.getenv("MAX_CAPS"))
 
 
 
