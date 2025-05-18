@@ -10,9 +10,10 @@ import os
 def main():
     max_anime_to_process = 10
     anime_to_process = 0
+    offset_id = 0
     with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
         while anime_to_process < max_anime_to_process:
-            mensajes = obtener_mensajes_recientes(client, limit=50, offset_id=0)
+            mensajes = obtener_mensajes_recientes(client, limit=50, offset_id=offset_id)
             if not mensajes:
                 print("No se encontraron mensajes para procesar.")
                 return
@@ -73,7 +74,8 @@ def main():
                         
                 if anime_to_process >= max_anime_to_process:
                     break
-
+            offset_id = mensajes[-1].id
+            print(f"Offset ID actualizado a: {offset_id}")
 
         print("\nProceso completo.")
 
