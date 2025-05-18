@@ -68,31 +68,31 @@ def descargar_videos():
     return videos_descargados, DOWNLOAD_FOLDER
 
 
-def obtener_mensajes_recientes(limit=50):
-    with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
-        canal = obtener_canal_por_id(client, 1888892519)
-        history = client(GetHistoryRequest(
-            peer=canal,
-            limit=limit,
-            offset_date=None,
-            offset_id=0,
-            max_id=0,
-            min_id=0,
-            add_offset=0,
-            hash=0
-        ))
-        return history.messages
+def obtener_mensajes_recientes(client, limit=50, offset_id=0):
+    canal = obtener_canal_por_id(client, 1888892519)
+    history = client(GetHistoryRequest(
+        peer=canal,
+        limit=limit,
+        offset_date=None,
+        offset_id=offset_id,
+        max_id=0,
+        min_id=0,
+        add_offset=0,
+        hash=0
+    ))
+    return history.messages
 
 
 
-def descargar_video_de_mensaje(message, nombre_archivo_base, cap_num):
+
+def descargar_video_de_mensaje(client, message, nombre_archivo_base, cap_num):
     filename = f"{nombre_archivo_base}.mp4"
     folder = "downloads"
     filepath = os.path.join(folder, filename)
 
     try:
         os.makedirs(folder, exist_ok=True)
-        message.download_media(file=filepath)
+        client.download_media(message.media, file=filepath)
         return True, filepath
     except Exception as e:
         print(f"Error al descargar: {e}")

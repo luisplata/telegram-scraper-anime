@@ -6,7 +6,6 @@ env/
 
 # Archivos de configuración sensibles
 .env
-config.py
 anon.session
 
 # Archivos de base de datos y datos temporales
