@@ -63,15 +63,13 @@ def main():
                     else:
                         print(f"Archivo no encontrado: {archivo_path}")
                         continue
-                    
-                anime_to_process += 1
-                
-                print(f"Anime procesado: {nombre_anime} Capítulo {cap_num} total: {anime_to_process}")
 
                 if not anime_existente.get("compartido", False):
                     exito = compartir_anime(nombre_anime, cap_num, f"{VIEW_URL}/{filecode}", etiqueta_audio)
                     if exito:
                         actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
+                        anime_to_process += 1
+                        print(f"Anime procesado: {nombre_anime} Capítulo {cap_num} total: {anime_to_process}")
                         
                 if anime_to_process >= max_anime_to_process:
                     break
