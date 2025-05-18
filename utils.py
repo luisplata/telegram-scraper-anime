@@ -23,13 +23,15 @@ def formatear_nombre_video(texto_mensaje):
     else:
         etiqueta_audio = "sub_latino"
 
-    # Quitar episodio y subtítulo/idioma del nombre del anime
-    nombre_anime = texto_mensaje
+    # Quitar todo lo que viene después de un salto de línea o hashtag
+    nombre_anime = texto_mensaje.split('\n')[0].split('#')[0]
+    # Quitar "»" y lo que sigue
+    nombre_anime = nombre_anime.split('»')[0]
     # Quitar "Episodio XX" o "Capítulo XX"
     nombre_anime = re.sub(r"(Episodio|Cap[ií]tulo)\s*\d+", "", nombre_anime, flags=re.IGNORECASE)
     # Quitar "Sub Español", "Audio Latino", etc.
-    nombre_anime = re.sub(r"(Sub Español|Audio Latino|Sub Español|Sub|Español|Latino|🇲🇽)", "", nombre_anime, flags=re.IGNORECASE)
-    nombre_anime = nombre_anime.strip(" -–—:|")
+    nombre_anime = re.sub(r"(Sub Español|Audio Latino|Sub|Español|Latino|🇲🇽)", "", nombre_anime, flags=re.IGNORECASE)
+    nombre_anime = nombre_anime.strip(" -–—:|»\n\r\t_")
 
     nombre_anime_limpio = limpiar_nombre(nombre_anime)
     return nombre_anime_limpio, numero_cap, etiqueta_audio, nombre_anime
