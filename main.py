@@ -88,13 +88,14 @@ def main():
                     exito = compartir_anime(nombre_anime, cap_num, f"{VIEW_URL}/{filecode}", etiqueta_audio)
                     if exito:
                         actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
-                        anime_to_process += 1
                         print(f"Anime procesado: {nombre_anime} Capítulo {cap_num} total: {anime_to_process}")
-                        end_time = datetime.now()
-                        duracion = end_time - start_time
-                        print("Hora fin:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
-                        print("Duración:", str(end_time - start_time))
-                        guardar_log_ejecucion(nombre_anime, cap_num, start_time, end_time, duracion)
+                
+                anime_to_process += 1
+                end_time = datetime.now()
+                duracion = end_time - start_time
+                print("Hora fin:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
+                print("Duración:", str(end_time - start_time))
+                guardar_log_ejecucion(nombre_anime, cap_num, start_time, end_time, duracion)
                         
                 if anime_to_process >= max_anime_to_process:
                     break
