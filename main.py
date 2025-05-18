@@ -12,7 +12,8 @@ def main():
     max_anime_to_process = MAX_CAPS
     anime_to_process = 0
     offset_id = 0
-    print("Hora inicio:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    start_time = datetime.now()
+    print("Hora inicio:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
     with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
         while anime_to_process < max_anime_to_process:
             mensajes = obtener_mensajes_recientes(client, limit=50, offset_id=offset_id)
@@ -78,9 +79,11 @@ def main():
                     break
             offset_id = mensajes[-1].id
             print(f"Offset ID actualizado a: {offset_id}")
-
+        
+        end_time = datetime.now()
         print("\nProceso completo.")
-        print("Hora inicio:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        print("Hora fin:", end_time.strftime("%Y-%m-%d %H:%M:%S"))
+        print("Duración:", str(end_time - start_time))
 
 if __name__ == "__main__":
     main()
