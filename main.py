@@ -4,6 +4,7 @@ from utils import formatear_nombre_video, limpiar_nombre
 from db_manager import agregar_anime, actualizar_estado_anime, buscar_anime
 from config import VIEW_URL, SESSION_NAME, API_ID, API_HASH
 from telethon.sync import TelegramClient
+from sharer import buscar_anime_en_api, compartir_anime
 import os
 
 def main():
@@ -25,14 +26,13 @@ def main():
                     print("Mensaje sin texto. Saltando.")
                     continue
 
-                nombre_anime, cap_num = formatear_nombre_video(texto)
-                nombre_anime_limpio = limpiar_nombre(nombre_anime)
-                nombre_archivo_base = f"{nombre_anime_limpio}_cap_{cap_num}"
+                nombre_anime_limpio, cap_num, etiqueta_audio, nombre_anime = formatear_nombre_video(texto)
+                nombre_archivo_base = f"{nombre_anime_limpio}_cap_{cap_num}_{etiqueta_audio}"
 
                 # Buscar en la DB
                 anime_existente = buscar_anime(nombre_anime, int(cap_num))
                 if not anime_existente:
-                    agregar_anime(nombre_anime, int(cap_num), "")
+                    agregar_anime(nombre_anime, int(cap_num), "", etiqueta_audio)
                     anime_existente = buscar_anime(nombre_anime, int(cap_num))
 
                 # Descargar si no se ha descargado
@@ -46,12 +46,13 @@ def main():
                         continue
                 else:
                     archivo_path = os.path.join("downloads", f"{nombre_archivo_base}.mp4")
-
+                
+                filecode = None
                 # Subir si no se ha subido
                 if not anime_existente.get("subido", False):
                     if os.path.exists(archivo_path):
                         print(f"Subiendo video: {archivo_path}")
-                        title = f"{nombre_anime} Capítulo {cap_num}"
+                        title = f"{nombre_anime} Capítulo {cap_num} {etiqueta_audio}"
                         filecode = subir_video(archivo_path, title)
                         if filecode:
                             actualizar_estado_anime(nombre_anime, int(cap_num), subido=True, link=f"{VIEW_URL}/{filecode}")
@@ -64,11 +65,14 @@ def main():
                         continue
                     
                 anime_to_process += 1
+                
+                print(f"Anime procesado: {nombre_anime} Capítulo {cap_num} total: {anime_to_process}")
 
-                # Compartir (en un futuro)
-                if not anime_existente or not anime_existente.get("compartido", False):
-                    print(f"Compartiendo: {nombre_anime} Capítulo {cap_num}")
-                    actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
+                if not anime_existente.get("compartido", False):
+                    exito = compartir_anime(nombre_anime, cap_num, f"{VIEW_URL}/{filecode}")
+                    if exito:
+                        actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
+
 
         print("\nProceso completo.")
 

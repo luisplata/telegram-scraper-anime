@@ -24,7 +24,7 @@ def buscar_anime(nombre, cap):
             return anime
     return None
 
-def agregar_anime(nombre, cap, link=""):
+def agregar_anime(nombre, cap, link="", audio="sub"):
     db = obtener_db()
     if buscar_anime(nombre, cap):
         return False
@@ -35,7 +35,8 @@ def agregar_anime(nombre, cap, link=""):
         "link": link,
         "descargado": False,
         "subido": False,
-        "compartido": False
+        "compartido": False,
+        "audio": audio,
     }
     db["animes"].append(nuevo)
     guardar_db(db)

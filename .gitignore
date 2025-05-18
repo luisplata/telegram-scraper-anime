@@ -19,10 +19,6 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Directorios y archivos de Docker
-Dockerfile
-docker-compose.yml
-
 # Directorios de sistema/IDE
 .vscode/
 .idea/
