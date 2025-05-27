@@ -4,7 +4,7 @@ from utils import formatear_nombre_video, limpiar_nombre
 from db_manager import agregar_anime, actualizar_estado_anime, buscar_anime
 from config import VIEW_URL, SESSION_NAME, API_ID, API_HASH, MAX_CAPS
 from telethon.sync import TelegramClient
-from sharer import buscar_anime_en_api, compartir_anime
+from sharer import buscar_anime_en_api, compartir_anime, validate_if_anime_can_be_shared
 import os
 from datetime import datetime
 import csv
@@ -54,6 +54,10 @@ def main():
                 if not anime_existente:
                     agregar_anime(nombre_anime, int(cap_num), "", etiqueta_audio)
                     anime_existente = buscar_anime(nombre_anime, int(cap_num))
+                    
+                if not validate_if_anime_can_be_shared(nombre_anime):
+                    print(f"❌ El anime '{nombre_anime}' no puede ser compartido. Saltando...")
+                    continue
 
                 # Descargar si no se ha descargado
                 if not anime_existente or not anime_existente.get("descargado", False):

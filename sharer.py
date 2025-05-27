@@ -99,3 +99,26 @@ def compartir_anime(nombre_anime, cap_num, link, etiqueta_audio):
         else:
             print("❌ No se encontró una coincidencia suficientemente buena.")
             return False
+
+def validate_if_anime_can_be_shared(nombre_anime):
+    resultados = buscar_anime_en_api(nombre_anime)
+    if len(resultados) == 1:
+        anime = resultados[0]
+        print(anime)
+        return True
+    else:
+        print(f"⚠️ {len(resultados)} resultados encontrados para '{nombre_anime}'. Buscando el más parecido...")
+        mejores = []
+        for anime in resultados:
+            titulo = anime.get("title", "")
+            porcentaje = calcular_match(nombre_anime, titulo)
+            mejores.append((porcentaje, anime))
+            print(f"Comparando con '{titulo}': {porcentaje:.2f}% match")
+        mejores.sort(reverse=True, key=lambda x: x[0])
+        if mejores and mejores[0][0] > 80:  # Puedes ajustar el umbral
+            mejor_anime = mejores[0][1]
+            print(f"Mejor coincidencia: {mejor_anime['title']} ({mejores[0][0]:.2f}%)")
+            return True
+        else:
+            print("❌ No se encontró una coincidencia suficientemente buena.")
+            return False

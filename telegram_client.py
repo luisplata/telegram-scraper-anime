@@ -17,59 +17,8 @@ def listar_canales(client):
         entity = dialog.entity
         print(f"Nombre: {dialog.name} | ID: {entity.id} | Username: {getattr(entity, 'username', None)}")
 
-def descargar_videos():
-    os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
-    videos_descargados = 0
-
-    with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
-        listar_canales(client)
-        channel = obtener_canal_por_id(client, CHANNEL_ID)
-        
-        messages = client(GetHistoryRequest(
-            peer=channel,
-            limit=50,
-            offset_date=None,
-            offset_id=0,
-            max_id=0,
-            min_id=0,
-            add_offset=0,
-            hash=0
-        ))
-
-        print(f"Iniciando descarga de videos del canal: {channel.title}")
-
-        for message in messages.messages:
-            if message.media and hasattr(message.media, 'document'):
-                for attr in message.media.document.attributes:
-                    if hasattr(attr, 'file_name'):
-                        file_name = attr.file_name
-                        if file_name.endswith('.mp4'):
-                            texto = message.message if message.message else "video_sin_titulo"
-                            nombre_anime, cap_num = formatear_nombre_video(texto)
-                            timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-                            nombre_final = f"{timestamp}_{nombre_anime}_cap_{cap_num}.mp4"
-                            file_path = os.path.join(DOWNLOAD_FOLDER, nombre_final)
-
-                            contador = 1
-                            base_name = f"{nombre_anime}_cap_{cap_num}"
-                            while os.path.exists(file_path):
-                                nombre_final = f"{base_name}_{contador}.mp4"
-                                file_path = os.path.join(DOWNLOAD_FOLDER, nombre_final)
-                                contador += 1
-
-                            print(f"\nMensaje: {texto}")
-                            print(f"Guardando video como: {nombre_final}")
-                            client.download_media(message.media, file=file_path)
-                            print(f"Guardado en: {file_path}")
-
-                            videos_descargados += 1
-
-    print(f"\nDescarga finalizada. Total de videos descargados: {videos_descargados}")
-    return videos_descargados, DOWNLOAD_FOLDER
-
-
-def obtener_mensajes_recientes(client, limit=50, offset_id=0):
-    canal = obtener_canal_por_id(client, 1888892519)
+def obtener_mensajes(client, canal_id, limit=50, offset_id=0):
+    canal = obtener_canal_por_id(client, canal_id)
     history = client(GetHistoryRequest(
         peer=canal,
         limit=limit,
@@ -82,18 +31,75 @@ def obtener_mensajes_recientes(client, limit=50, offset_id=0):
     ))
     return history.messages
 
+def es_video_mp4(message):
+    if message.media and hasattr(message.media, 'document'):
+        for attr in message.media.document.attributes:
+            if hasattr(attr, 'file_name'):
+                file_name = attr.file_name
+                if file_name.endswith('.mp4'):
+                    return True
+    return False
 
+def construir_nombre_archivo(texto, ext="mp4"):
+    nombre_anime, cap_num = formatear_nombre_video(texto)
+    timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    nombre_final = f"{timestamp}_{nombre_anime}_cap_{cap_num}.{ext}"
+    return nombre_final
 
+def obtener_ruta_unica(base_folder, nombre_base):
+    file_path = os.path.join(base_folder, nombre_base)
+    contador = 1
+    base_name, ext = os.path.splitext(nombre_base)
+    while os.path.exists(file_path):
+        nombre_final = f"{base_name}_{contador}{ext}"
+        file_path = os.path.join(base_folder, nombre_final)
+        contador += 1
+    return file_path
+
+def descargar_media(client, message, file_path):
+    try:
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        client.download_media(message.media, file=file_path)
+        return True, file_path
+    except Exception as e:
+        print(f"Error al descargar: {e}")
+        return False, None
+
+def descargar_videos():
+    os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+    videos_descargados = 0
+    with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
+        listar_canales(client)
+        channel = obtener_canal_por_id(client, CHANNEL_ID)
+        messages = obtener_mensajes(client, CHANNEL_ID, limit=50)
+        print(f"Iniciando descarga de videos del canal: {channel.title}")
+        for message in messages:
+            if es_video_mp4(message):
+                texto = message.message if message.message else "video_sin_titulo"
+                nombre_final = construir_nombre_archivo(texto)
+                file_path = obtener_ruta_unica(DOWNLOAD_FOLDER, nombre_final)
+                print(f"\nMensaje: {texto}")
+                print(f"Guardando video como: {os.path.basename(file_path)}")
+                exito, _ = descargar_media(client, message, file_path)
+                if exito:
+                    print(f"Guardado en: {file_path}")
+                    videos_descargados += 1
+    print(f"\nDescarga finalizada. Total de videos descargados: {videos_descargados}")
+    return videos_descargados, DOWNLOAD_FOLDER
+
+def obtener_mensajes_recientes(client, limit=50, offset_id=0):
+    return obtener_mensajes(client, CHANNEL_ID, limit=limit, offset_id=offset_id)
 
 def descargar_video_de_mensaje(client, message, nombre_archivo_base, cap_num):
     filename = f"{nombre_archivo_base}.mp4"
     folder = "downloads"
     filepath = os.path.join(folder, filename)
+    return descargar_media(client, message, filepath)
 
-    try:
-        os.makedirs(folder, exist_ok=True)
-        client.download_media(message.media, file=filepath)
-        return True, filepath
-    except Exception as e:
-        print(f"Error al descargar: {e}")
-        return False, None
+if __name__ == "__main__":
+    print("Iniciando cliente de Telegram...")
+    with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
+        listar_canales(client)
+        channel = obtener_canal_por_id(client, CHANNEL_ID)
+        print(f"Iniciando descarga de videos del canal: {channel.title}")
+        
