@@ -4,6 +4,8 @@ from difflib import SequenceMatcher
 import json
 import re
 
+from matcher import calcular_match
+
 def buscar_anime_en_api(nombre_anime):
     try:
         # El parámetro correcto es 'q', no 'query'
@@ -97,39 +99,3 @@ def compartir_anime(nombre_anime, cap_num, link, etiqueta_audio):
         else:
             print("❌ No se encontró una coincidencia suficientemente buena.")
             return False
-
-
-def calcular_match(nombre_a, nombre_b):
-    nombre_a = normalizar_nombre(nombre_a)
-    nombre_b = normalizar_nombre(nombre_b)
-
-    if nombre_a in nombre_b or nombre_b in nombre_a:
-        return 100.0
-
-    ratio = SequenceMatcher(None, nombre_a, nombre_b).ratio() * 100
-
-    tokens_a = set(nombre_a.split())
-    tokens_b = set(nombre_b.split())
-    interseccion = tokens_a & tokens_b
-    union = tokens_a | tokens_b
-
-    if union:
-        similitud_tokens = len(interseccion) / len(union) * 100
-    else:
-        similitud_tokens = 0
-
-    # Bonus si primera palabra coincide
-    if nombre_a.split()[0] == nombre_b.split()[0]:
-        ratio += 5
-
-    return (ratio + similitud_tokens) / 2
-
-
-
-def normalizar_nombre(nombre):
-    nombre = nombre.lower()
-    nombre = re.sub(r'[^a-z0-9\s]', '', nombre)  # quitar símbolos
-    nombre = re.sub(r'\b(season|part|episode|ep|cap|sono|ni|junior|youth|hen)\b', '', nombre)  # quitar palabras poco útiles
-    nombre = re.sub(r'\b\d+\b', '', nombre)  # quitar números sueltos
-    nombre = re.sub(r'\s+', ' ', nombre)  # normalizar espacios
-    return nombre.strip()
