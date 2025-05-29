@@ -10,7 +10,7 @@ def obtener_upload_server():
         data = response.json()
         if data.get("status") == 200 and data.get("msg") == "OK":
             upload_url = data.get("result")
-            print(f"Upload server disponible: {upload_url}")
+            # print(f"Upload server disponible: {upload_url}")
             return upload_url
         else:
             print(f"Servicio no disponible: {data}")
@@ -39,7 +39,7 @@ def subir_video(file_path, title="", description=""):
                 archivos = result.get("files", [])
                 if archivos:
                     file_info = archivos[0]
-                    print(f"Archivo subido: {file_info.get('filename')} con código {file_info.get('filecode')}")
+                    # print(f"Archivo subido: {file_info.get('filename')} con código {file_info.get('filecode')}")
                     return file_info.get("filecode")
                 else:
                     print("No se devolvieron archivos en la respuesta.")
@@ -53,6 +53,6 @@ def subir_video(file_path, title="", description=""):
 def eliminar_archivo(file_path):
     try:
         os.remove(file_path)
-        print(f"Archivo local eliminado: {file_path}")
+        # print(f"Archivo local eliminado: {file_path}")
     except Exception as e:
         print(f"Error al eliminar archivo local: {e}")

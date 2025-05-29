@@ -10,7 +10,7 @@ def subir_video(file_path):
             data = response.json()
             video_url = data.get('url')
             if video_url:
-                print(f"Video subido correctamente: {video_url}")
+                # print(f"Video subido correctamente: {video_url}")
                 return video_url
             else:
                 print("No se encontró el link en la respuesta.")

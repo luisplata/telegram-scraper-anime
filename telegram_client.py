@@ -12,7 +12,7 @@ def obtener_canal_por_id(client, canal_id):
     raise ValueError(f"No se encontró el canal con ID '{canal_id}'")
 
 def listar_canales(client):
-    print("Lista de canales disponibles:")
+    # print("Lista de canales disponibles:")
     for dialog in client.get_dialogs():
         entity = dialog.entity
         print(f"Nombre: {dialog.name} | ID: {entity.id} | Username: {getattr(entity, 'username', None)}")
@@ -72,19 +72,19 @@ def descargar_videos():
         listar_canales(client)
         channel = obtener_canal_por_id(client, CHANNEL_ID)
         messages = obtener_mensajes(client, CHANNEL_ID, limit=50)
-        print(f"Iniciando descarga de videos del canal: {channel.title}")
+        # print(f"Iniciando descarga de videos del canal: {channel.title}")
         for message in messages:
             if es_video_mp4(message):
                 texto = message.message if message.message else "video_sin_titulo"
                 nombre_final = construir_nombre_archivo(texto)
                 file_path = obtener_ruta_unica(DOWNLOAD_FOLDER, nombre_final)
-                print(f"\nMensaje: {texto}")
-                print(f"Guardando video como: {os.path.basename(file_path)}")
+                # print(f"\nMensaje: {texto}")
+                # print(f"Guardando video como: {os.path.basename(file_path)}")
                 exito, _ = descargar_media(client, message, file_path)
                 if exito:
-                    print(f"Guardado en: {file_path}")
+                    # print(f"Guardado en: {file_path}")
                     videos_descargados += 1
-    print(f"\nDescarga finalizada. Total de videos descargados: {videos_descargados}")
+    # print(f"\nDescarga finalizada. Total de videos descargados: {videos_descargados}")
     return videos_descargados, DOWNLOAD_FOLDER
 
 def obtener_mensajes_recientes(client, limit=50, offset_id=0):
@@ -97,9 +97,9 @@ def descargar_video_de_mensaje(client, message, nombre_archivo_base, cap_num):
     return descargar_media(client, message, filepath)
 
 if __name__ == "__main__":
-    print("Iniciando cliente de Telegram...")
+    # print("Iniciando cliente de Telegram...")
     with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
         listar_canales(client)
         channel = obtener_canal_por_id(client, CHANNEL_ID)
-        print(f"Iniciando descarga de videos del canal: {channel.title}")
+        # print(f"Iniciando descarga de videos del canal: {channel.title}")
         

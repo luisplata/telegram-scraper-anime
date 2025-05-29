@@ -105,7 +105,7 @@ def calcular_match(nombre_a, nombre_b):
             resultados.append(func(nombre_a, nombre_b))
         except Exception as e:
             print(f"Error en función de match {func.__name__}: {e}")
-    print(f"Resultados de match para '{nombre_a}' y '{nombre_b}': {resultados}")
+    # print(f"Resultados de match para '{nombre_a}' y '{nombre_b}': {resultados}")
     if resultados:
         return (sum(resultados) / len(resultados) + max(resultados)) / 2
     return 0

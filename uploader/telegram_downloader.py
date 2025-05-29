@@ -71,7 +71,7 @@ def obtener_upload_server():
         data = response.json()
         if data.get("status") == 200 and data.get("msg") == "OK":
             upload_url = data.get("result")
-            print(f"Upload server disponible: {upload_url}")
+            # print(f"Upload server disponible: {upload_url}")
             return upload_url
         else:
             print(f"Servicio no disponible: {data}")
@@ -100,7 +100,7 @@ def subir_video(file_path, title="", description=""):
                 archivos = result.get("files", [])
                 if archivos:
                     file_info = archivos[0]
-                    print(f"Archivo subido: {file_info.get('filename')} con código {file_info.get('filecode')}")
+                    # print(f"Archivo subido: {file_info.get('filename')} con código {file_info.get('filecode')}")
                     return file_info.get("filecode")
                 else:
                     print("No se devolvieron archivos en la respuesta.")
@@ -128,7 +128,7 @@ def descargar_y_subir_videos():
             hash=0
         ))
 
-        print(f"Iniciando descarga de videos del canal: {channel.title}")
+        # print(f"Iniciando descarga de videos del canal: {channel.title}")
         videos_descargados = 0
 
         for message in messages.messages:
@@ -151,10 +151,10 @@ def descargar_y_subir_videos():
                                 file_path = os.path.join(download_folder, nombre_final)
                                 contador += 1
 
-                            print(f"\nMensaje: {texto}")
-                            print(f"Guardando video como: {nombre_final}")
+                            # print(f"\nMensaje: {texto}")
+                            # print(f"Guardando video como: {nombre_final}")
                             client.download_media(message.media, file=file_path)
-                            print(f"Guardado en: {file_path}")
+                            # print(f"Guardado en: {file_path}")
 
                             # Subir video
                             title = f"{nombre_anime} Capítulo {cap_num}"
@@ -162,7 +162,7 @@ def descargar_y_subir_videos():
                             if filecode:
                                 try:
                                     os.remove(file_path)
-                                    print(f"Archivo local eliminado: {file_path}")
+                                    # print(f"Archivo local eliminado: {file_path}")
                                 except Exception as e:
                                     print(f"Error al eliminar archivo local: {e}")
                             else:
@@ -170,7 +170,7 @@ def descargar_y_subir_videos():
 
                             videos_descargados += 1
 
-        print(f"\nDescarga y subida finalizada. Total de videos procesados: {videos_descargados}")
+        # print(f"\nDescarga y subida finalizada. Total de videos procesados: {videos_descargados}")
 
 if __name__ == "__main__":
     descargar_y_subir_videos()
