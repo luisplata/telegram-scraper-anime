@@ -1,7 +1,7 @@
 from telegram_client import obtener_mensajes_recientes, descargar_video_de_mensaje
 from uploader import subir_video, eliminar_archivo
 from utils import formatear_nombre_video, limpiar_nombre
-from db_manager import agregar_anime, actualizar_estado_anime, buscar_anime
+from db_manager import AnimeDB
 from config import VIEW_URL, SESSION_NAME, API_ID, API_HASH, MAX_CAPS
 from telethon.sync import TelegramClient
 from sharer import buscar_anime_en_api, compartir_anime, validate_if_anime_can_be_shared
@@ -28,6 +28,8 @@ def main():
     max_anime_to_process = MAX_CAPS
     anime_to_process = 0
     offset_id = 0
+    db = AnimeDB("db.json")  # Instancia de la base de datos
+
     with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
         while anime_to_process < max_anime_to_process: 
             print(f"\nBuscando mensajes recientes... (offset_id={offset_id})")
@@ -51,12 +53,12 @@ def main():
                 nombre_archivo_base = f"{nombre_anime_limpio}_cap_{cap_num}_{etiqueta_audio}"
                 print(f"Nombre anime: {nombre_anime} | Capítulo: {cap_num} | Audio: {etiqueta_audio}")
 
-                # Buscar en la DB
-                anime_existente = buscar_anime(nombre_anime, int(cap_num))
+                # Buscar en la DB orientada a objetos
+                anime_existente = db.buscar_anime(nombre_anime, int(cap_num))
                 if not anime_existente:
                     print("Anime/capítulo no encontrado en la base de datos. Agregando...")
-                    agregar_anime(nombre_anime, int(cap_num), "", etiqueta_audio)
-                    anime_existente = buscar_anime(nombre_anime, int(cap_num))
+                    db.agregar_anime(nombre_anime, int(cap_num), "", etiqueta_audio)
+                    anime_existente = db.buscar_anime(nombre_anime, int(cap_num))
                 else:
                     print("Anime/capítulo encontrado en la base de datos.")
 
@@ -74,7 +76,7 @@ def main():
                     exito, archivo_path = descargar_video_de_mensaje(client, message, nombre_archivo_base, int(cap_num))
                     if exito:
                         print("Descarga exitosa.")
-                        actualizar_estado_anime(nombre_anime, int(cap_num), descargado=True)
+                        db.actualizar_estado_anime(nombre_anime, int(cap_num), descargado=True)
                     else:
                         print("Fallo la descarga, saltando...")
                         continue
@@ -91,7 +93,7 @@ def main():
                         filecode = subir_video(archivo_path, title)
                         if filecode:
                             print("Subida exitosa.")
-                            actualizar_estado_anime(nombre_anime, int(cap_num), subido=True, link=f"{VIEW_URL}/{filecode}")
+                            db.actualizar_estado_anime(nombre_anime, int(cap_num), subido=True, link=f"{VIEW_URL}/{filecode}")
                             eliminar_archivo(archivo_path)
                             print("Archivo local eliminado tras la subida.")
                         else:
@@ -109,7 +111,7 @@ def main():
                     exito = compartir_anime(nombre_anime, cap_num, f"{VIEW_URL}/{filecode}", etiqueta_audio)
                     if exito:
                         print("Compartido exitosamente.")
-                        actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
+                        db.actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
                         anime_to_process += 1
                         print(f"Anime procesado: {nombre_anime} Capítulo {cap_num}")
                     else:
