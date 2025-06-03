@@ -30,7 +30,6 @@ def main():
     offset_id = 0
     with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
         while anime_to_process < max_anime_to_process: 
-            start_time = datetime.now()
             mensajes = obtener_mensajes_recientes(client, limit=50, offset_id=offset_id)
             if not mensajes:
                 #print("No se encontraron mensajes para procesar.")
@@ -58,15 +57,16 @@ def main():
                     # print(f"❌ El anime '{nombre_anime}' no puede ser compartido. Saltando...")
                     continue
 
-                # Descargar si no se ha descargado
+                start_time = datetime.now()
                 print(f"Hora inicio: '{start_time.strftime("%Y-%m-%d %H:%M:%S")}' para '{nombre_anime}' Capítulo {cap_num} ({etiqueta_audio})")
+                
+                # Descargar si no se ha descargado
                 if not anime_existente or not anime_existente.get("descargado", False):
-                    # print(f"Descargando video: {nombre_archivo_base}")
                     exito, archivo_path = descargar_video_de_mensaje(client, message, nombre_archivo_base, int(cap_num))
                     if exito:
                         actualizar_estado_anime(nombre_anime, int(cap_num), descargado=True)
                     else:
-                        # print("Fallo la descarga, saltando...")
+                        print("Fallo la descarga, saltando...")
                         continue
                 else:
                     archivo_path = os.path.join("downloads", f"{nombre_archivo_base}.mp4")
@@ -82,10 +82,10 @@ def main():
                             actualizar_estado_anime(nombre_anime, int(cap_num), subido=True, link=f"{VIEW_URL}/{filecode}")
                             eliminar_archivo(archivo_path)
                         else:
-                            # print("Fallo la subida, saltando...")
+                            print("Fallo la subida, saltando...")
                             continue
                     else:
-                        # print(f"Archivo no encontrado: {archivo_path}")
+                        print(f"Archivo no encontrado: {archivo_path}")
                         continue
 
                 if not anime_existente.get("compartido", False):
@@ -94,12 +94,14 @@ def main():
                         actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
                         anime_to_process += 1
                         # print(f"Anime procesado: {nombre_anime} Capítulo {cap_num} total: {anime_to_process}")
-                        end_time = datetime.now()
-                        duracion = end_time - start_time
-                        print(f"Hora fin: '{end_time.strftime("%Y-%m-%d %H:%M:%S")}' para '{nombre_anime}' Capítulo {cap_num} ({etiqueta_audio})")
-                        print("Duración:", str(duracion))
-                        guardar_log_ejecucion(nombre_anime, cap_num, start_time, end_time, duracion)
                         
+                
+                end_time = datetime.now()
+                duracion = end_time - start_time
+                print(f"Hora fin: '{end_time.strftime("%Y-%m-%d %H:%M:%S")}' para '{nombre_anime}' Capítulo {cap_num} ({etiqueta_audio})")
+                print("Duración:", str(duracion))
+                guardar_log_ejecucion(nombre_anime, cap_num, start_time, end_time, duracion)
+                
                 if anime_to_process >= max_anime_to_process:
                     break
             offset_id = mensajes[-1].id
