@@ -60,6 +60,7 @@ def descargar_media(client, message, file_path):
     try:
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         client.download_media(message.media, file=file_path)
+        print(f"Descargado: {file_path}")
         return True, file_path
     except Exception as e:
         print(f"Error al descargar: {e}")

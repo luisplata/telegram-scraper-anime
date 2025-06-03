@@ -75,7 +75,7 @@ def main():
                 # Subir si no se ha subido
                 if not anime_existente.get("subido", False):
                     if os.path.exists(archivo_path):
-                        # print(f"Subiendo video: {archivo_path}")
+                        print(f"Subiendo video: {archivo_path}")
                         title = f"{nombre_anime} Capítulo {cap_num} {etiqueta_audio}"
                         filecode = subir_video(archivo_path, title)
                         if filecode:
@@ -93,7 +93,7 @@ def main():
                     if exito:
                         actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
                         anime_to_process += 1
-                        # print(f"Anime procesado: {nombre_anime} Capítulo {cap_num} total: {anime_to_process}")
+                        print(f"Anime procesado: {nombre_anime} Capítulo {cap_num}")
                         
                 
                 end_time = datetime.now()
