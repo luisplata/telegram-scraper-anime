@@ -97,7 +97,7 @@ def compartir_anime(nombre_anime, cap_num, link, etiqueta_audio):
             exito = enviar_webhook(payload)
             return exito
         else:
-            print(f"❌ No se encontró una coincidencia suficientemente buena. la mejor fue {mejores[0][1]} ({mejores[0][0]:.2f}%)")
+            print(f"❌ No se encontró una coincidencia suficientemente buena para {titulo}. la mejor fue {mejores[0][1]['title']} ({mejores[0][0]:.2f}%)")
             return False
 
 def validate_if_anime_can_be_shared(nombre_anime):
@@ -119,7 +119,7 @@ def validate_if_anime_can_be_shared(nombre_anime):
             return True
         else:
             if mejores:
-                print(f"❌ No se encontró una coincidencia suficientemente buena. la mejor fue {mejores[0][1]} ({mejores[0][0]:.2f}%)")
+                print(f"❌ No se encontró una coincidencia suficientemente buena para {titulo}. la mejor fue {mejores[0][1]['title']} ({mejores[0][0]:.2f}%)")
             else:
                 print("❌ No se encontró ninguna coincidencia en la API.")
             return False
