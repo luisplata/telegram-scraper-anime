@@ -43,6 +43,10 @@ class ChannelMediaDownloader:
                 if hasattr(attr, 'file_name') and attr.file_name.lower().endswith(('.mp4', '.mkv', '.avi', '.mov')):
                     return True
         return False
+    
+    def obtener_coleccion(self, entity, grouped_id):
+        # Devuelve todos los mensajes del grupo (álbum)
+        return list(self.client.iter_messages(entity, reverse=True, grouped=grouped_id))
 
     def obtener_extension(self, message, tipo):
         if tipo == "imagen":
@@ -97,47 +101,89 @@ class ChannelMediaDownloader:
         return messages
 
     def descargar_medios(self):
-        messages = self.buscar_mensajes()
+        messages = list(self.buscar_mensajes())
         media_db = []
         img_count = 1
         vid_count = 1
+        procesados = set()
+        entity = self.client.get_entity(self.channel_id)
+
+        print(f"Total de mensajes recuperados: {len(messages)}")
+
         for msg in messages:
-            if not msg.media:
+            if msg.id in procesados:
+                print(f"Mensaje {msg.id} ya procesado, saltando.")
                 continue
-            tipo = None
-            file_path = None
-            ext = None
-            rel_path = None
-            if self.es_imagen(msg):
-                tipo = "imagen"
-                ext = self.obtener_extension(msg, tipo)
-                rel_path = os.path.join(self.channel_name, self.subfolder, "images", f"img_{self.channel_name}_{img_count}.{ext}") if self.subfolder else os.path.join(self.channel_name, "images", f"img_{self.channel_name}_{img_count}.{ext}")
-                file_path = os.path.join("downloads", rel_path)
-                img_count += 1
-            elif self.es_video(msg):
-                tipo = "video"
-                ext = self.obtener_extension(msg, tipo)
-                rel_path = os.path.join(self.channel_name, self.subfolder, "videos", f"video_{self.channel_name}_{vid_count}.{ext}") if self.subfolder else os.path.join(self.channel_name, "videos", f"video_{self.channel_name}_{vid_count}.{ext}")
-                file_path = os.path.join("downloads", rel_path)
-                vid_count += 1
-            if tipo:
-                try:
-                    self.client.download_media(msg, file=file_path)
-                    print(f"Descargado: {file_path}")
-                except Exception as e:
-                    print(f"Error al descargar {file_path}: {e}")
-                media_db.append({
-                    "id": msg.id,
-                    "tipo": tipo,
-                    "fecha": str(msg.date),
-                    "caption": msg.text or "",
-                    "procesado": False,
-                    "archivo": rel_path.replace("\\", "\\\\")
-                })
+            if not msg.media:
+                print(f"Mensaje {msg.id} sin media, saltando.")
+                continue
+
+            # Si el mensaje es parte de una colección (álbum)
+            if hasattr(msg, 'grouped_id') and msg.grouped_id:
+                same_group_msgs = self.obtener_album_completo(msg.grouped_id)
+                print(f"Álbum detectado (grouped_id={msg.grouped_id}) con {len(same_group_msgs)} elementos.")
+                for grouped_msg in same_group_msgs:
+                    if grouped_msg.id in procesados:
+                        print(f"  Mensaje {grouped_msg.id} del álbum ya procesado, saltando.")
+                        continue
+                    if not grouped_msg.media:
+                        print(f"  Mensaje {grouped_msg.id} del álbum sin media, saltando.")
+                        continue
+                    img_count, vid_count = self._descargar_mensaje(grouped_msg, media_db, img_count, vid_count)
+                    procesados.add(grouped_msg.id)
+                continue
+
+            # Mensaje individual
+            print(f"Descargando mensaje individual {msg.id}...")
+            img_count, vid_count = self._descargar_mensaje(msg, media_db, img_count, vid_count)
+            procesados.add(msg.id)
+
         print(f"Total de archivos multimedia encontrados: {len(media_db)}")
         with open(self.db_path, "w", encoding="utf-8") as f:
             json.dump({"media": media_db}, f, indent=2, ensure_ascii=False)
         print(f"Guardado en {self.db_path}")
+
+    def _descargar_mensaje(self, msg, media_db, img_count, vid_count):
+        tipo = None
+        file_path = None
+        ext = None
+        rel_path = None
+        if self.es_imagen(msg):
+            tipo = "imagen"
+            ext = self.obtener_extension(msg, tipo)
+            rel_path = os.path.join(self.channel_name, self.subfolder, "images", f"img_{self.channel_name}_{img_count}.{ext}") if self.subfolder else os.path.join(self.channel_name, "images", f"img_{self.channel_name}_{img_count}.{ext}")
+            file_path = os.path.join("downloads", rel_path)
+            img_count += 1
+        elif self.es_video(msg):
+            tipo = "video"
+            ext = self.obtener_extension(msg, tipo)
+            rel_path = os.path.join(self.channel_name, self.subfolder, "videos", f"video_{self.channel_name}_{vid_count}.{ext}") if self.subfolder else os.path.join(self.channel_name, "videos", f"video_{self.channel_name}_{vid_count}.{ext}")
+            file_path = os.path.join("downloads", rel_path)
+            vid_count += 1
+        if tipo:
+            try:
+                self.client.download_media(msg, file=file_path)
+                print(f"Descargado: {file_path}")
+            except Exception as e:
+                print(f"Error al descargar {file_path}: {e}")
+            media_db.append({
+                "id": msg.id,
+                "tipo": tipo,
+                "fecha": str(msg.date),
+                "caption": msg.text or "",
+                "procesado": False,
+                "archivo": rel_path.replace("\\", "\\\\")
+            })
+        return img_count, vid_count
+    
+    def obtener_album_completo(self, grouped_id):
+        """
+        Busca todos los mensajes del canal con el grouped_id dado.
+        """
+        entity = self.client.get_entity(self.channel_id)
+        # Trae muchos mensajes (ajusta el límite si tu canal tiene álbumes muy antiguos)
+        all_msgs = list(self.client.iter_messages(entity, reverse=True, limit=1000))
+        return [m for m in all_msgs if getattr(m, 'grouped_id', None) == grouped_id]
 
 if __name__ == "__main__":
     import sys
