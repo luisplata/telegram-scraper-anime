@@ -119,12 +119,12 @@ class AnimeChannelHandle(ChannelHandle):
                 # Descargar si no se ha descargado
                 if not anime_existente or not anime_existente.get("descargado", False):
                     print(f"Descargando video: {nombre_archivo_base}")
-                    db.actualizar_estado_anime(nombre_anime, int(cap_num), descargado=True)
                     exito, archivo_path = descargar_video_de_mensaje(
                         client, message, nombre_archivo_base, int(cap_num)
                     )
                     if exito:
                         print("Descarga exitosa.")
+                        db.actualizar_estado_anime(nombre_anime, int(cap_num), descargado=True)
                     else:
                         print("Fallo la descarga, saltando...")
                         continue
@@ -154,18 +154,29 @@ class AnimeChannelHandle(ChannelHandle):
                         continue
                 else:
                     print("El video ya estaba subido previamente.")
+                    # Intenta obtener el filecode del link guardado
+                    link = anime_existente.get("link", "")
+                    if link and link.startswith(VIEW_URL):
+                        filecode = link.replace(f"{VIEW_URL}/", "")
+                        print(f"Usando filecode existente: {filecode}")
+                    else:
+                        print("No se encontró un filecode válido en la base de datos. Saltando compartir.")
+                        continue
 
                 # Compartir si no se ha compartido
                 if not anime_existente.get("compartido", False):
-                    print("Compartiendo anime...")
-                    exito = compartir_anime(nombre_anime, cap_num, f"{VIEW_URL}/{filecode}", etiqueta_audio)
-                    if exito:
-                        print("Compartido exitosamente.")
-                        db.actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
-                        anime_to_process += 1
-                        print(f"Anime procesado: {nombre_anime} Capítulo {cap_num}")
+                    if filecode:
+                        print(f"Compartiendo anime {nombre_anime} Capítulo {cap_num} URL: {VIEW_URL}/{filecode}")
+                        exito = compartir_anime(nombre_anime, cap_num, f"{VIEW_URL}/{filecode}", etiqueta_audio)
+                        if exito:
+                            print(f"Compartido exitosamente. Link: {VIEW_URL}/{filecode}")
+                            db.actualizar_estado_anime(nombre_anime, int(cap_num), compartido=True)
+                            anime_to_process += 1
+                            print(f"Anime procesado: {nombre_anime} Capítulo {cap_num}")
+                        else:
+                            print("Fallo al compartir el anime.")
                     else:
-                        print("Fallo al compartir el anime.")
+                        print("No hay filecode disponible para compartir. Saltando...")
                 else:
                     print("El anime ya había sido compartido previamente.")
 
