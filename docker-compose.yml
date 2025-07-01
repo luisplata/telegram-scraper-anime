@@ -2,7 +2,16 @@ version: '3.8'
 services:
   downloader:
     build: .
+    environment:
+      - DIAS=-1
     volumes:
-      - ./downloads:/app/downloads
-      - ./db.json:/app/db.json
+      - ./animes.db:/app/animes.db
+    restart: unless-stopped
+
+  anime_downloader_7d:
+    build: .
+    environment:
+      - DIAS=2
+    volumes:
+      - ./animes.db:/app/animes.db
     restart: unless-stopped
