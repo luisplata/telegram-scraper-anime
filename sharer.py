@@ -87,6 +87,15 @@ def compartir_anime(nombre_anime, cap_num, link, etiqueta_audio):
         for anime in resultados:
             titulo = anime.get("title", "")
             porcentaje = calcular_match(nombre_anime, titulo)
+            # Si hay nombres alternativos, calcula el match con cada uno y usa el mayor
+            alter_names = anime.get("alter_names", [])
+            if isinstance(alter_names, list) and alter_names:
+                for alt in alter_names:
+                    # Puede ser dict con 'name' o string
+                    alt_name = alt.get("name") if isinstance(alt, dict) else str(alt)
+                    porcentaje_alt = calcular_match(nombre_anime, alt_name)
+                    if porcentaje_alt > porcentaje:
+                        porcentaje = porcentaje_alt
             mejores.append((porcentaje, anime))
             # print(f"Comparando con '{titulo}': {porcentaje:.2f}% match")
         mejores.sort(reverse=True, key=lambda x: x[0])
