@@ -56,6 +56,7 @@ class AnimeChannelHandle(ChannelHandle):
             int: Número de animes procesados.
         """
         anime_to_process = 0
+        archivos_subidos = 0  # Nuevo contador
         entity = client.get_entity(self.channel_id)
         fecha_limite = None
         if dias != -1:
@@ -64,14 +65,14 @@ class AnimeChannelHandle(ChannelHandle):
         else:
             last_id = self.get_last_offset(db)  # Continúa desde donde quedó
 
-        while anime_to_process < max_anime_to_process:
+        while archivos_subidos < 200 and anime_to_process < max_anime_to_process:
             batch_count = min(limit, max_anime_to_process - anime_to_process)
             messages = list(client.iter_messages(entity, limit=batch_count, offset_id=last_id))
             if not messages:
                 break
 
             for message in messages:
-                if anime_to_process >= max_anime_to_process:
+                if archivos_subidos >= 200 or anime_to_process >= max_anime_to_process:
                     break
 
                 if fecha_limite and message.date < fecha_limite:
@@ -146,6 +147,10 @@ class AnimeChannelHandle(ChannelHandle):
                                 nombre_anime, int(cap_num), subido=True, link=f"{VIEW_URL}/{filecode}"
                             )
                             print("Archivo local eliminado tras la subida.")
+                            archivos_subidos += 1  # <--- Incrementa aquí
+                            if archivos_subidos >= 200:
+                                print("Se alcanzó el máximo de 200 archivos subidos en esta ejecución.")
+                                return anime_to_process
                         else:
                             print("Fallo la subida, saltando...")
                             continue
