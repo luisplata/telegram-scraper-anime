@@ -5,7 +5,7 @@ from telethon.sync import TelegramClient
 import sys
 
 def main():
-    db = AnimeDB("animes.db")
+    db = AnimeDB(f"{HChannelHandle.key}.db")
     # Lee el parámetro de días desde la línea de comandos, por defecto -1
     dias = int(sys.argv[1]) if len(sys.argv) > 1 else -1
     with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
