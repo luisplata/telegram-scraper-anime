@@ -57,6 +57,7 @@ class AnimeChannelHandle(ChannelHandle):
         """
         anime_to_process = 0
         archivos_subidos = 0  # Nuevo contador
+        MAX_SUBIDAS = 150
         entity = client.get_entity(self.channel_id)
         fecha_limite = None
         if dias != -1:
@@ -65,14 +66,14 @@ class AnimeChannelHandle(ChannelHandle):
         else:
             last_id = self.get_last_offset(db)  # Continúa desde donde quedó
 
-        while archivos_subidos < 200 and anime_to_process < max_anime_to_process:
+        while archivos_subidos < MAX_SUBIDAS and anime_to_process < max_anime_to_process:
             batch_count = min(limit, max_anime_to_process - anime_to_process)
             messages = list(client.iter_messages(entity, limit=batch_count, offset_id=last_id))
             if not messages:
                 break
 
             for message in messages:
-                if archivos_subidos >= 200 or anime_to_process >= max_anime_to_process:
+                if archivos_subidos >= MAX_SUBIDAS or anime_to_process >= max_anime_to_process:
                     break
 
                 if fecha_limite and message.date < fecha_limite:
@@ -91,12 +92,21 @@ class AnimeChannelHandle(ChannelHandle):
                 print(
                     f"\nProcesando mensaje: {texto[:60]}{'...' if len(texto) > 60 else ''}"
                 )
-                nombre_anime_limpio, cap_num, etiqueta_audio, nombre_anime = (
-                    formatear_nombre_video(texto)
-                )
-                nombre_archivo_base = f"{nombre_anime_limpio}_cap_{cap_num}_{etiqueta_audio}"
+                nombre_anime_limpio, cap_num, etiqueta_audio, nombre_anime = formatear_nombre_video(texto)
+
+                # Validar que cap_num sea un número entero mayor que 0
+                try:
+                    cap_num_int = int(cap_num)
+                    if cap_num_int <= 0:
+                        print(f"Capítulo {cap_num} no válido. Saltando...")
+                        continue
+                except (ValueError, TypeError):
+                    print(f"Capítulo '{cap_num}' no es un número válido. Saltando...")
+                    continue
+
+                nombre_archivo_base = f"{nombre_anime_limpio}_cap_{cap_num_int}_{etiqueta_audio}"
                 print(
-                    f"Nombre anime: {nombre_anime} | Capítulo: {cap_num} | Audio: {etiqueta_audio}"
+                    f"Nombre anime: {nombre_anime} | Capítulo: {cap_num_int} | Audio: {etiqueta_audio}"
                 )
 
                 anime_existente = db.buscar_anime(nombre_anime, int(cap_num))
@@ -148,7 +158,7 @@ class AnimeChannelHandle(ChannelHandle):
                             )
                             print("Archivo local eliminado tras la subida.")
                             archivos_subidos += 1  # <--- Incrementa aquí
-                            if archivos_subidos >= 200:
+                            if archivos_subidos >= MAX_SUBIDAS:
                                 print("Se alcanzó el máximo de 200 archivos subidos en esta ejecución.")
                                 return anime_to_process
                         else:

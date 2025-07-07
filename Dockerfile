@@ -12,4 +12,4 @@ RUN apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y && \
     apt-get purge -y gcc libffi-dev libssl-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-CMD ["bash", "-c", "while true; do python3 anime_main.py ${DIAS}; sleep 86400; done"]
+CMD ["bash", "-c", "while true; do python3 anime_main.py ${DIAS}; done"]

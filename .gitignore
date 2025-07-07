@@ -30,3 +30,5 @@ C/
 *.tmp
 *.swp
 *.db
+series*
+*.txt
