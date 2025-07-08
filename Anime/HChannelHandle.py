@@ -6,6 +6,7 @@ import unicodedata
 import time
 import json
 
+from Anime.model import Anime, Episode, Source
 from telegram_client import descargar_video_de_mensaje
 from uploader import subir_video, eliminar_archivo
 from utils import formatear_nombre_video
@@ -19,63 +20,6 @@ from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
 def limpiar_nombre_archivo(nombre: str) -> str:
     # Elimina caracteres no válidos en Windows para rutas
     return re.sub(r'[<>:"/\\|?*]', '', nombre)
-
-
-class Source:
-    def __init__(self, name: str, url: str):
-        self.name = name
-        self.url = url
-
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "url": self.url
-        }
-
-
-class Episode:
-    def __init__(self, title: str, number: int, link: str = ""):
-        self.title = title
-        self.number = number
-        self.link = link
-        self.source: list[Source] = []
-
-    def add_source(self, source: Source):
-        self.source.append(source)
-
-    def to_dict(self):
-        return {
-            "title": self.title,
-            "number": self.number,
-            "link": self.link,
-            "source": [s.to_dict() for s in self.source]
-        }
-
-
-class Anime:
-    def __init__(self, name: list[str], slug: str, description: str, image: str):
-        self.name = name
-        self.slug = slug
-        self.description = description
-        self.image = image
-        self.caps: list[Episode] = []
-        self.alterNames = []
-        self.genres = []
-
-    def add_cap(self, cap: Episode):
-        self.caps.append(cap)
-
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "slug": self.slug,
-            "description": self.description,
-            "image": self.image,
-            "caps": [cap.to_dict() for cap in self.caps],
-            "alterNames": self.alterNames,
-            "genres": self.genres
-        }
-
 
 class HChannelHandle(ChannelHandle):
     key = "h_anime"
