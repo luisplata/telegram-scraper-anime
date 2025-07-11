@@ -1,0 +1,20 @@
+# .dockerignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+.vscode/
+.idea/
+*.swp
+*.bak
+*.tmp
+*.old
+*.json
+downloads/
+last_offset*
+series_h.json
+.DS_Store
+Thumbs.db

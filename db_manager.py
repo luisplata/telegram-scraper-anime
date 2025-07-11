@@ -1,136 +1,96 @@
-import json
-import os
-
-DB_PATH = "db.json"
-
-def obtener_db():
-    if not os.path.exists(DB_PATH):
-        return {"animes": []}
-    try:
-        with open(DB_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except json.JSONDecodeError:
-        print("⚠️ Error al leer la base de datos. Se usará una vacía.")
-        return {"animes": []}
-
-def guardar_db(data):
-    with open(DB_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-
-def buscar_anime(nombre, cap):
-    db = obtener_db()
-    for anime in db["animes"]:
-        if anime["anime"].lower() == nombre.lower() and anime["cap"] == cap:
-            return anime
-    return None
-
-def agregar_anime(nombre, cap, link="", audio="sub"):
-    db = obtener_db()
-    if buscar_anime(nombre, cap):
-        return False
-
-    nuevo = {
-        "anime": nombre,
-        "cap": cap,
-        "link": link,
-        "descargado": False,
-        "subido": False,
-        "compartido": False,
-        "audio": audio,
-    }
-    db["animes"].append(nuevo)
-    guardar_db(db)
-    return True
-
-def actualizar_estado_anime(nombre, cap, **kwargs):
-    db = obtener_db()
-    modificado = False
-    for anime in db["animes"]:
-        if anime["anime"].lower() == nombre.lower() and anime["cap"] == cap:
-            for campo, valor in kwargs.items():
-                anime[campo] = valor
-            modificado = True
-            break
-    if modificado:
-        guardar_db(db)
-    return modificado
-
-
-import json
-import os
+import sqlite3
+from typing import Optional, Any, Dict
 
 class AnimeDB:
-    def __init__(self, db_path="db.json"):
+    def __init__(self, db_path="animes.db"):
         self.db_path = db_path
-        self.data = {"animes": []}
-        self.load()
+        self.lock_path = db_path + ".lock"
+        self._ensure_schema()
 
-    def load(self):
-        if not os.path.exists(self.db_path):
-            self.data = {"animes": []}
-            return
-        try:
-            with open(self.db_path, "r", encoding="utf-8") as f:
-                self.data = json.load(f)
-        except json.JSONDecodeError:
-            print(f"⚠️ Error al leer la base de datos {self.db_path}. Se usará una vacía.")
-            self.data = {"animes": []}
+    def _connect(self):
+        return sqlite3.connect(self.db_path, timeout=30, check_same_thread=False)
 
-    def save(self):
-        with open(self.db_path, "w", encoding="utf-8") as f:
-            json.dump(self.data, f, indent=4, ensure_ascii=False)
+    def _ensure_schema(self):
+        with self._connect() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS animes (
+                    anime TEXT NOT NULL,
+                    cap INTEGER NOT NULL,
+                    link TEXT,
+                    descargado BOOLEAN DEFAULT 0,
+                    subido BOOLEAN DEFAULT 0,
+                    compartido BOOLEAN DEFAULT 0,
+                    audio TEXT DEFAULT 'sub',
+                    PRIMARY KEY (anime, cap, audio)
+                )
+            """)
+            conn.commit()
 
-    def buscar_anime(self, nombre, cap):
-        for anime in self.data["animes"]:
-            if anime["anime"].lower() == nombre.lower() and anime["cap"] == cap:
-                return anime
-        return None
+    def buscar_anime(self, nombre: str, cap: int) -> Optional[Dict[str, Any]]:
+        with self._connect() as conn:
+            cur = conn.execute(
+                "SELECT * FROM animes WHERE LOWER(anime)=LOWER(?) AND cap=? and audio",
+                (nombre, cap)
+            )
+            row = cur.fetchone()
+            if row:
+                columns = [desc[0] for desc in cur.description]
+                return dict(zip(columns, row))
+            return None
+        
+    def buscar_anime(self, nombre: str, cap: int, audio: str = "sub_latino") -> Optional[Dict[str, Any]]:
+        with self._connect() as conn:
+            cur = conn.execute(
+                "SELECT * FROM animes WHERE LOWER(anime)=LOWER(?) AND cap=? and audio=?",
+                (nombre, cap, audio)
+            )
+            row = cur.fetchone()
+            if row:
+                columns = [desc[0] for desc in cur.description]
+                return dict(zip(columns, row))
+            return None
 
-    def agregar_anime(self, nombre, cap, link="", audio="sub"):
-        if self.buscar_anime(nombre, cap):
+    def agregar_anime(self, nombre: str, cap: int, link: str = "", audio: str = "sub") -> bool:
+        if self.buscar_anime(nombre, cap, audio):
             return False
-        nuevo = {
-            "anime": nombre,
-            "cap": cap,
-            "link": link,
-            "descargado": False,
-            "subido": False,
-            "compartido": False,
-            "audio": audio,
-        }
-        self.data["animes"].append(nuevo)
-        self.save()
-        return True
-
-    def actualizar_estado_anime(self, nombre, cap, **kwargs):
-        modificado = False
-        for anime in self.data["animes"]:
-            if anime["anime"].lower() == nombre.lower() and anime["cap"] == cap:
-                for campo, valor in kwargs.items():
-                    anime[campo] = valor
-                modificado = True
-                break
-        if modificado:
-            self.save()
-        return modificado
-
-    def eliminar_anime(self, nombre, cap):
-        original_len = len(self.data["animes"])
-        self.data["animes"] = [
-            anime for anime in self.data["animes"]
-            if not (anime["anime"].lower() == nombre.lower() and anime["cap"] == cap)
-        ]
-        if len(self.data["animes"]) < original_len:
-            self.save()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO animes (anime, cap, link, audio, descargado, subido, compartido) VALUES (?, ?, ?, ?, 0, 0, 0)",
+                (nombre, cap, link, audio)
+            )
+            conn.commit()
             return True
-        return False
+
+    def actualizar_estado_anime(self, nombre: str, cap: int, **kwargs) -> bool:
+        if not kwargs:
+            return False
+        keys = []
+        values = []
+        for campo, valor in kwargs.items():
+            keys.append(f"{campo}=?")
+            values.append(valor)
+        values.extend([nombre, cap])
+        with self._connect() as conn:
+            cur = conn.execute(
+                f"UPDATE animes SET {', '.join(keys)} WHERE LOWER(anime)=LOWER(?) AND cap=?",
+                tuple(values)
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def eliminar_anime(self, nombre: str, cap: int) -> bool:
+        with self._connect() as conn:
+            cur = conn.execute(
+                "DELETE FROM animes WHERE LOWER(anime)=LOWER(?) AND cap=?",
+                (nombre, cap)
+            )
+            conn.commit()
+            return cur.rowcount > 0
 
     def listar_animes(self):
-        return self.data["animes"]
+        with self._connect() as conn:
+            cur = conn.execute("SELECT * FROM animes")
+            columns = [desc[0] for desc in cur.description]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
 
-# Ejemplo de uso:
-# db = AnimeDB("db.json")
-# db.agregar_anime("Mi Anime", 1)
-# anime = db.buscar_anime("Mi Anime", 1)
-# db.actualizar_estado_anime("Mi Anime", 1, descargado=True)
-# db.eliminar_anime("Mi Anime", 1)
+# Recuerda agregar 'filelock' a tu requirements.txt

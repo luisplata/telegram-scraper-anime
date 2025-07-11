@@ -1,8 +1,5 @@
 import requests
 from config import API_SEARCH_URL, API_WEBHOOK_URL, API_WEBHOOK_TOKEN
-from difflib import SequenceMatcher
-import json
-import re
 
 from matcher import calcular_match
 
@@ -10,6 +7,7 @@ def buscar_anime_en_api(nombre_anime):
     try:
         # El parámetro correcto es 'q', no 'query'
         response = requests.get(API_SEARCH_URL, params={"q": nombre_anime})
+        print(f"url final is {response.url}")
         response.raise_for_status()
         resultados = response.json()
         return resultados['data']
@@ -87,6 +85,16 @@ def compartir_anime(nombre_anime, cap_num, link, etiqueta_audio):
         for anime in resultados:
             titulo = anime.get("title", "")
             porcentaje = calcular_match(nombre_anime, titulo)
+            # Si hay nombres alternativos, calcula el match con cada uno y usa el mayor
+            alter_names = anime.get("alter_names", [])
+            print(f"alter_names {alter_names})")
+            if isinstance(alter_names, list) and alter_names:
+                for alt in alter_names:
+                    # Puede ser dict con 'name' o string
+                    alt_name = alt.get("name") if isinstance(alt, dict) else str(alt)
+                    porcentaje_alt = calcular_match(nombre_anime, alt_name)
+                    if porcentaje_alt > porcentaje:
+                        porcentaje = porcentaje_alt
             mejores.append((porcentaje, anime))
             # print(f"Comparando con '{titulo}': {porcentaje:.2f}% match")
         mejores.sort(reverse=True, key=lambda x: x[0])
@@ -111,7 +119,18 @@ def validate_if_anime_can_be_shared(nombre_anime):
         for anime in resultados:
             titulo = anime.get("title", "")
             porcentaje = calcular_match(nombre_anime, titulo)
+            # Si hay nombres alternativos, calcula el match con cada uno y usa el mayor
+            alter_names = anime.get("alter_names", [])
+            print(f"alter_names {alter_names})")
+            if isinstance(alter_names, list) and alter_names:
+                for alt in alter_names:
+                    # Puede ser dict con 'name' o string
+                    alt_name = alt.get("name") if isinstance(alt, dict) else str(alt)
+                    porcentaje_alt = calcular_match(nombre_anime, alt_name)
+                    if porcentaje_alt > porcentaje:
+                        porcentaje = porcentaje_alt
             mejores.append((porcentaje, anime))
+            # print(f"Comparando con '{titulo}': {porcentaje:.2f}% match")
         mejores.sort(reverse=True, key=lambda x: x[0])
         if mejores and mejores[0][0] > 80:
             mejor_anime = mejores[0][1]

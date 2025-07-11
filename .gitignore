@@ -29,3 +29,7 @@ C/
 # Archivos temporales
 *.tmp
 *.swp
+*.db
+series*
+*.txt
+*.json

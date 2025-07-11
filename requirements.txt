@@ -2,3 +2,4 @@ telethon
 requests
 python-dotenv
 requests
+filelock
