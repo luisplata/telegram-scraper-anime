@@ -109,13 +109,14 @@ class AnimeChannelHandle(ChannelHandle):
                     f"Nombre anime: {nombre_anime} | Capítulo: {cap_num_int} | Audio: {etiqueta_audio}"
                 )
 
-                anime_existente = db.buscar_anime(nombre_anime, int(cap_num))
+                anime_existente = db.buscar_anime(nombre_anime, int(cap_num), etiqueta_audio)
                 if not anime_existente:
-                    print("Anime/capítulo no encontrado en la base de datos. Agregando...")
+                    print(f"Anime/capítulo no encontrado en la base de datos. Agregando... {nombre_anime} {int(cap_num)} {etiqueta_audio}")
                     db.agregar_anime(nombre_anime, int(cap_num), "", etiqueta_audio)
-                    anime_existente = db.buscar_anime(nombre_anime, int(cap_num))
                 else:
                     print("Anime/capítulo encontrado en la base de datos.")
+                    
+                anime_existente = db.buscar_anime(nombre_anime, int(cap_num), etiqueta_audio)
 
                 print("Validando si el anime puede ser compartido...")
                 if not validate_if_anime_can_be_shared(nombre_anime):
@@ -124,11 +125,12 @@ class AnimeChannelHandle(ChannelHandle):
 
                 start_time = datetime.now()
                 print(
-                    f"Hora inicio: '{start_time.strftime('%Y-%m-%d %H:%M:%S')}' para '{nombre_anime}' Capítulo {cap_num} ({etiqueta_audio})"
+                    f"Hora inicio: '{start_time.strftime('%Y-%m-%d %H:%M:%S')}' para '{nombre_anime}' Capítulo {cap_num} {etiqueta_audio}"
                 )
-
+                anime_existente = db.buscar_anime(nombre_anime, int(cap_num), etiqueta_audio)
+                print(anime_existente)
                 # Descargar si no se ha descargado
-                if not anime_existente or not anime_existente.get("descargado", False):
+                if not anime_existente.get("descargado", False):
                     print(f"Descargando video: {nombre_archivo_base}")
                     exito, archivo_path = descargar_video_de_mensaje(
                         client, message, nombre_archivo_base, int(cap_num)
@@ -145,6 +147,7 @@ class AnimeChannelHandle(ChannelHandle):
 
                 filecode = None
                 # Subir si no se ha subido
+                anime_existente = db.buscar_anime(nombre_anime, int(cap_num), etiqueta_audio)
                 if not anime_existente.get("subido", False):
                     if os.path.exists(archivo_path):
                         print(f"Subiendo video: {archivo_path}")
@@ -179,6 +182,7 @@ class AnimeChannelHandle(ChannelHandle):
                         continue
 
                 # Compartir si no se ha compartido
+                anime_existente = db.buscar_anime(nombre_anime, int(cap_num), etiqueta_audio)
                 if not anime_existente.get("compartido", False):
                     if filecode:
                         print(f"Compartiendo anime {nombre_anime} Capítulo {cap_num} URL: {VIEW_URL}/{filecode}")

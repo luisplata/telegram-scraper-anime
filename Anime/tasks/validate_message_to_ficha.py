@@ -3,8 +3,10 @@ import os
 import re
 import logging
 import re
+import requests
 
 from Anime.model import Anime, Episode
+from db_manager import AnimeDB
 logger = logging.getLogger(__name__)
 
 def validar_si_es_una_ficha_anime(message):
@@ -40,7 +42,7 @@ def limpiar_nombre_archivo(nombre: str) -> str:
     # Elimina caracteres no válidos en Windows para rutas
     return re.sub(r'[<>:"/\\|?*]', '', nombre)
 
-def get_all_caps(message, messages, titulo) -> list[Episode]:
+def get_all_caps(message, messages, titulo, db: AnimeDB) -> list[Episode]:
     caps = []
     ficha_index = messages.index(message)
     titulo_normalizado = limpiar_titulo(titulo)
@@ -57,14 +59,25 @@ def get_all_caps(message, messages, titulo) -> list[Episode]:
             continue
         cap_num = is_cap_to_anime(texto_rel, titulo_normalizado)
         if cap_num is not None:
+            # Verificar si el capítulo ya existe en la base de datos
+            if db.buscar_anime(titulo_normalizado, cap_num):
+                # print(f"Capítulo {cap_num} ya existe en la base de datos para {titulo_normalizado}.")
+                pass
+            else:
+                # print(f"Capítulo {cap_num} no encontrado en la base de datos, creando nuevo capítulo.")
+                db.agregar_anime(titulo_normalizado, cap_num)
+            anime_db = db.buscar_anime(titulo_normalizado, cap_num)
             cap = Episode(
                 title=f"{limpiar_titulo(titulo)} - Capítulo {cap_num}",
                 number=cap_num,
-                link=f"https://t.me/c/{msg_rel.peer_id.channel_id}/{msg_rel.id}",
+                link=f"link sample",
                 message_id=msg_rel.id
             )
             # print(f"Capítulo encontrado: {cap.title} - {cap.number} message_id {cap.message_id}")
             caps.append(cap)
+        else:
+            print(f"Este es el cover image")
+            pass
     return caps
 
 def is_cap_to_anime(texto_rel, titulo):
@@ -95,33 +108,102 @@ def is_cap_to_anime(texto_rel, titulo):
 def save_anime_to_json(anime: Anime):
     path = f"anime_{anime.slug}.json"
     nuevo_dict = anime.to_dict()
-    # print(nuevo_dict)
+    slug_actual = nuevo_dict["slug"]
 
-    data_existente = {}
+    data_existente = []
+
+    # Leer archivo si existe
     if os.path.exists(path):
         try:
             with open(path, "r", encoding="utf-8") as file:
                 data_existente = json.load(file)
-                # print(f"📂 Archivo {path} encontrado, cargando datos existentes.")
+                if not isinstance(data_existente, list):
+                    print(f"⚠️ El archivo {path} no es una lista JSON. Se sobrescribirá.")
+                    data_existente = []
         except json.JSONDecodeError:
             print(f"⚠️ Error al decodificar JSON en {path}. Se sobrescribirá con datos nuevos.")
         except Exception as e:
             print(f"❌ Error inesperado al leer {path}: {e}")
 
-    # Fusionar episodios
-    episodios_exist = {ep["number"]: ep for ep in data_existente.get("caps", [])}
-    for nuevo_ep in nuevo_dict.get("caps", []):
-        episodios_exist[nuevo_ep["number"]] = nuevo_ep
-    nuevo_dict["caps"] = list(episodios_exist.values())
+    # Reemplazar o agregar el anime nuevo
+    reemplazado = False
+    for i, existing in enumerate(data_existente):
+        if existing.get("slug") == slug_actual:
+            # Fusionar episodios
+            episodios_exist = {ep["number"]: ep for ep in existing.get("caps", [])}
+            for nuevo_ep in nuevo_dict.get("caps", []):
+                episodios_exist[nuevo_ep["number"]] = nuevo_ep
+            nuevo_dict["caps"] = list(episodios_exist.values())
 
-    # Fusionar otros campos si están vacíos en el nuevo
-    for field in ["image", "genres", "alterNames"]:
-        if not nuevo_dict.get(field) and data_existente.get(field):
-            nuevo_dict[field] = data_existente[field]
+            # Fusionar otros campos si están vacíos en el nuevo
+            for field in ["image", "genres", "alterNames"]:
+                if not nuevo_dict.get(field) and existing.get(field):
+                    nuevo_dict[field] = existing[field]
 
-    # Guardar el JSON final
+            data_existente[i] = nuevo_dict
+            reemplazado = True
+            break
+
+    if not reemplazado:
+        data_existente.append(nuevo_dict)
+
+    # Guardar el arreglo completo actualizado
     with open(path, "w", encoding="utf-8") as file:
-        json.dump(nuevo_dict, file, indent=2, ensure_ascii=False)
+        json.dump(data_existente, file, indent=2, ensure_ascii=False)
         print(f"💾 Archivo actualizado: {path}")
 
-    return path, nuevo_dict
+    return path, data_existente
+
+
+
+def cargar_anime_json(path: str) -> dict:
+    """
+    Carga y retorna el contenido JSON de un anime desde un archivo dado.
+
+    Asume que el archivo contiene un único anime.
+    Retorna None si el archivo no existe o tiene errores.
+    """
+    if not os.path.exists(path):
+        print(f"⚠️ Archivo no encontrado: {path}")
+        return None
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        print(f"❌ Error al decodificar JSON en: {path}")
+    except Exception as e:
+        print(f"❌ Error inesperado al leer {path}: {e}")
+
+    return None
+
+def enviar_anime_completo(json_anime: dict, webhook, token) -> requests.Response:
+    """
+    Envía un anime completo al webhook del backend.
+    
+    Args:
+        json_anime: Un diccionario (o lista de diccionarios) con la estructura del anime.
+
+    Returns:
+        La respuesta del servidor.
+    """
+    url = f"{webhook}"
+    headers = {
+        "X-Webhook-Token": f"{token}",
+        "Content-Type": "application/json"
+    }
+
+    # Asegurarse de que el payload sea una lista
+    if isinstance(json_anime, dict):
+        payload = [json_anime]
+    elif isinstance(json_anime, list):
+        payload = json_anime
+    else:
+        raise ValueError("El JSON del anime debe ser un dict o una lista de dicts.")
+
+    try:
+        response = requests.post(url, headers=headers, data=json.dumps(payload, ensure_ascii=False))
+        return response
+    except Exception as e:
+        print(f"❌ Error al enviar anime a la API: {e}")
+        return None

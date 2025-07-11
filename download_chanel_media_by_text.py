@@ -1,7 +1,7 @@
 import os
 import json
 from telethon.sync import TelegramClient
-from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PeerChannel
 from config import API_ID, API_HASH, SESSION_NAME
 import re
 
@@ -120,7 +120,7 @@ class ChannelMediaDownloader:
 
             # Si el mensaje es parte de una colección (álbum)
             if hasattr(msg, 'grouped_id') and msg.grouped_id:
-                same_group_msgs = self.obtener_album_completo(msg.grouped_id)
+                same_group_msgs = self.obtener_album_completo(msg.grouped_id, msg.id)
                 print(f"Álbum detectado (grouped_id={msg.grouped_id}) con {len(same_group_msgs)} elementos.")
                 for grouped_msg in same_group_msgs:
                     if grouped_msg.id in procesados:
@@ -175,15 +175,34 @@ class ChannelMediaDownloader:
                 "archivo": rel_path.replace("\\", "\\\\")
             })
         return img_count, vid_count
-    
-    def obtener_album_completo(self, grouped_id):
+
+    def obtener_album_completo(self, grouped_id, mensaje_id_centro):
         """
-        Busca todos los mensajes del canal con el grouped_id dado.
+        Busca mensajes alrededor de un mensaje dado, buscando por grouped_id.
+        Descarga 500 mensajes antes y 500 después del mensaje con ID `mensaje_id_centro`.
         """
-        entity = self.client.get_entity(self.channel_id)
-        # Trae muchos mensajes (ajusta el límite si tu canal tiene álbumes muy antiguos)
-        all_msgs = list(self.client.iter_messages(entity, reverse=True, limit=1000))
-        return [m for m in all_msgs if getattr(m, 'grouped_id', None) == grouped_id]
+        entity = self.client.get_entity(PeerChannel(self.channel_id))
+        
+        # Mensajes hacia atrás (más recientes que mensaje_id_centro)
+        mensajes_despues = list(self.client.iter_messages(
+            entity,
+            offset_id=mensaje_id_centro,
+            reverse=True,
+            limit=500
+        ))
+        
+        # Mensajes hacia adelante (más antiguos que mensaje_id_centro)
+        mensajes_antes = list(self.client.iter_messages(
+            entity,
+            offset_id=mensaje_id_centro,
+            reverse=False,
+            limit=500
+        ))
+        
+        # Combinar y filtrar por grouped_id
+        todos = mensajes_antes + mensajes_despues
+        return [m for m in todos if getattr(m, 'grouped_id', None) == grouped_id]
+
 
 if __name__ == "__main__":
     import sys

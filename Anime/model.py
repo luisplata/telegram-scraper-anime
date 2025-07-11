@@ -19,6 +19,7 @@ class Episode:
         self.link = link
         self.source: list[Source] = []
         self.message_id: int = message_id
+        self.path: str = ""
 
     def add_source(self, source: Source):
         self.source.append(source)

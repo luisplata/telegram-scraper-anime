@@ -21,7 +21,7 @@ class AnimeDB:
                     subido BOOLEAN DEFAULT 0,
                     compartido BOOLEAN DEFAULT 0,
                     audio TEXT DEFAULT 'sub',
-                    PRIMARY KEY (anime, cap)
+                    PRIMARY KEY (anime, cap, audio)
                 )
             """)
             conn.commit()
@@ -29,8 +29,20 @@ class AnimeDB:
     def buscar_anime(self, nombre: str, cap: int) -> Optional[Dict[str, Any]]:
         with self._connect() as conn:
             cur = conn.execute(
-                "SELECT * FROM animes WHERE LOWER(anime)=LOWER(?) AND cap=?",
+                "SELECT * FROM animes WHERE LOWER(anime)=LOWER(?) AND cap=? and audio",
                 (nombre, cap)
+            )
+            row = cur.fetchone()
+            if row:
+                columns = [desc[0] for desc in cur.description]
+                return dict(zip(columns, row))
+            return None
+        
+    def buscar_anime(self, nombre: str, cap: int, audio: str = "sub_latino") -> Optional[Dict[str, Any]]:
+        with self._connect() as conn:
+            cur = conn.execute(
+                "SELECT * FROM animes WHERE LOWER(anime)=LOWER(?) AND cap=? and audio=?",
+                (nombre, cap, audio)
             )
             row = cur.fetchone()
             if row:
@@ -39,11 +51,11 @@ class AnimeDB:
             return None
 
     def agregar_anime(self, nombre: str, cap: int, link: str = "", audio: str = "sub") -> bool:
-        if self.buscar_anime(nombre, cap):
+        if self.buscar_anime(nombre, cap, audio):
             return False
         with self._connect() as conn:
             conn.execute(
-                "INSERT INTO animes (anime, cap, link, descargado, subido, compartido, audio) VALUES (?, ?, ?, 0, 0, 0, ?)",
+                "INSERT INTO animes (anime, cap, link, audio, descargado, subido, compartido) VALUES (?, ?, ?, ?, 0, 0, 0)",
                 (nombre, cap, link, audio)
             )
             conn.commit()
