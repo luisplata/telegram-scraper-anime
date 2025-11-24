@@ -1,7 +1,11 @@
 import os
 import json
 import re
+import logging
 from typing import Optional, List
+import app.logger_config  # ensure logging is configured
+
+logger = logging.getLogger(__name__)
 
 # Telethon types pueden no estar disponibles en tiempo de importación (tests locales).
 try:
@@ -23,6 +27,7 @@ class ChannelMediaDownloader:
         self.channel_name = channel_name
         self.limit = limit
         self.search = search
+        logger.info("Inicializando ChannelMediaDownloader: channel=%s limit=%s search=%s", channel_name, limit, search)
         self.channel_id = self.get_channel_id_by_name(channel_name)
         self.subfolder = self.limpiar_texto(search) if search else None
         self.base_folder, self.images_folder, self.videos_folder, self.db_path = self.organizar_directorios(channel_name, self.subfolder)
@@ -110,14 +115,15 @@ class ChannelMediaDownloader:
                     return dialog.entity.id
         except ValueError:
             pass
-
         for dialog in self.client.get_dialogs():
             username = getattr(dialog.entity, 'username', None)
             if (
                 (username and username.lower() == channel_name.lower()) or
                 (dialog.name and dialog.name.lower() == channel_name.lower())
             ):
+                logger.info("Canal encontrado: %s -> id=%s", channel_name, dialog.entity.id)
                 return dialog.entity.id
+        logger.error("No se encontró el canal con nombre, username o ID '%s'", channel_name)
         raise ValueError(f"No se encontró el canal con nombre, username o ID '{channel_name}'.")
 
     def buscar_mensajes(self):
@@ -126,10 +132,12 @@ class ChannelMediaDownloader:
             messages = self.client.iter_messages(entity, reverse=True, limit=self.limit, search=self.search)
         else:
             messages = self.client.iter_messages(entity, reverse=True, limit=self.limit)
+        logger.info("Buscando mensajes en canal_id=%s limit=%s search=%s", self.channel_id, self.limit, self.search)
         return messages
 
     def descargar_medios(self):
         messages = list(self.buscar_mensajes())
+        logger.info("Mensajes recuperados: %s", len(messages))
         media_db = []
         img_count = 1
         vid_count = 1
@@ -138,11 +146,14 @@ class ChannelMediaDownloader:
 
         for msg in messages:
             if msg.id in procesados:
+                logger.debug("Mensaje ya procesado: %s", msg.id)
                 continue
             if not getattr(msg, 'media', None):
+                logger.debug("Mensaje sin media: %s", msg.id)
                 continue
 
             if getattr(msg, 'grouped_id', None):
+                logger.info("Álbum detectado grouped_id=%s centrado en msg=%s", msg.grouped_id, msg.id)
                 same_group_msgs = self.obtener_album_completo(msg.grouped_id, msg.id)
                 for grouped_msg in same_group_msgs:
                     if grouped_msg.id in procesados:
@@ -158,6 +169,7 @@ class ChannelMediaDownloader:
 
         with open(self.db_path, "w", encoding="utf-8") as f:
             json.dump({"media": media_db}, f, indent=2, ensure_ascii=False)
+        logger.info("Descarga finalizada. DB guardada en %s, elementos=%s", self.db_path, len(media_db))
         return self.db_path
 
     def _descargar_mensaje(self, msg, media_db, img_count, vid_count):
@@ -178,10 +190,72 @@ class ChannelMediaDownloader:
             file_path = os.path.join("downloads", rel_path)
             vid_count += 1
         if tipo:
+            logger.info("Descargando mensaje id=%s tipo=%s -> %s", msg.id, tipo, file_path)
             try:
-                self.client.download_media(msg, file=file_path)
+                # Progress callback: show percentage during download
+                last = {'p': -1}
+
+                def _progress(current, total):
+                    try:
+                        if not total:
+                            return
+                        pct = int(current * 100 / total)
+                        # report when percent increases or at 100%
+                        if pct != last['p'] and (pct % 5 == 0 or pct == 100):
+                            print(f"\rDescargando {os.path.basename(file_path)}: {pct}%", end="", flush=True)
+                            last['p'] = pct
+                    except Exception:
+                        pass
+
+                # Start a small watchdog thread that prints a heartbeat while no
+                # progress events have occurred yet (useful during DC handoff).
+                import threading, time
+
+                done = threading.Event()
+
+                def _watchdog():
+                    start = time.time()
+                    spinner = ['|', '/', '-', '\\']
+                    i = 0
+                    while not done.is_set():
+                        elapsed = int(time.time() - start)
+                        # only show heartbeat if no progress yet
+                        if last['p'] <= 0:
+                            text = f"Esperando inicio de descarga... {spinner[i%4]} {elapsed}s"
+                            print(f"\r{text}", end="", flush=True)
+                            try:
+                                logger.debug(text)
+                            except Exception:
+                                pass
+                        time.sleep(1)
+                        i += 1
+                    # clear line after done
+                    try:
+                        logger.info("Watchdog terminado para descarga: %s", os.path.basename(file_path))
+                    except Exception:
+                        pass
+                    print('\r', end='', flush=True)
+
+                watcher = threading.Thread(target=_watchdog, daemon=True)
+                logger.info("Iniciando watchdog de heartbeat para %s", os.path.basename(file_path))
+                watcher.start()
+
+                # Telethon supports `progress_callback` in download_media; if not, fallback
+                try:
+                    self.client.download_media(msg, file=file_path, progress_callback=_progress)
+                except TypeError:
+                    # older Telethon versions may not accept progress_callback
+                    self.client.download_media(msg, file=file_path)
+                finally:
+                    done.set()
+                    watcher.join(timeout=0.1)
+                    logger.info("Watchdog detenido para %s", os.path.basename(file_path))
+                # ensure newline after progress printing
+                if last['p'] != -1:
+                    print()
+                logger.info("Descargado mensaje id=%s -> %s", msg.id, file_path)
             except Exception:
-                pass
+                logger.exception("Error descargando mensaje id=%s", msg.id)
             media_db.append({
                 "id": msg.id,
                 "tipo": tipo,

@@ -2,6 +2,10 @@ from telethon.sync import TelegramClient
 from contextlib import AbstractContextManager
 from telethon import errors
 from config import API_ID, API_HASH, SESSION_NAME, BOT_TOKEN
+import logging
+import app.logger_config  # ensure logging is configured for CLI runs
+
+logger = logging.getLogger(__name__)
 
 
 class TelethonAdapter(AbstractContextManager):
@@ -25,14 +29,19 @@ class TelethonAdapter(AbstractContextManager):
         self.client = TelegramClient(self._session, self._api_id, self._api_hash)
         try:
             if BOT_TOKEN:
+                logger.info("Iniciando Telethon en modo BOT")
                 # iniciar como bot evita pedir teléfono
                 self.client.start(bot_token=BOT_TOKEN)
             else:
+                logger.info("Iniciando Telethon en modo usuario (se puede pedir teléfono/código)")
                 # para cuentas de usuario Telethon pedirá teléfono/código si no hay sesión
                 self.client.start()
-        except errors.rpcerrorlist.PhoneNumberInvalidError:
-            raise RuntimeError("El número de teléfono proporcionado es inválido. Usa formato internacional completo, por ejemplo: +34123456789.")
+            logger.info("Telethon iniciado correctamente")
+        except errors.rpcerrorlist.PhoneNumberInvalidError as e:
+            logger.exception("Número de teléfono inválido")
+            raise RuntimeError("El número de teléfono proporcionado es inválido. Usa formato internacional completo, por ejemplo: +34123456789.") from e
         except Exception:
+            logger.exception("Error iniciando Telethon")
             # Re-raise to allow caller to see original Telethon exceptions if needed
             raise
         return self.client
@@ -40,6 +49,8 @@ class TelethonAdapter(AbstractContextManager):
     def __exit__(self, exc_type, exc, tb):
         try:
             if self.client:
+                logger.info("Desconectando Telethon")
                 self.client.disconnect()
+                logger.info("Telethon desconectado")
         finally:
             self.client = None
