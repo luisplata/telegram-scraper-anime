@@ -18,3 +18,4 @@ MAX_CAPS=int(os.getenv("MAX_CAPS"))
 SESSION_NAME = "anon"
 DOWNLOAD_FOLDER = "downloads"
 CHANNEL_ID = 1888892519  # El id del canal que usas
+BOT_TOKEN = os.getenv("BOT_TOKEN")

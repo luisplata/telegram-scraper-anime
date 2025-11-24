@@ -1,14 +1,18 @@
 from telethon.sync import TelegramClient
 from contextlib import AbstractContextManager
-from config import API_ID, API_HASH, SESSION_NAME
+from telethon import errors
+from config import API_ID, API_HASH, SESSION_NAME, BOT_TOKEN
 
 
 class TelethonAdapter(AbstractContextManager):
-    """Context manager simple que expone un cliente de Telethon ya iniciado.
+    """Context manager que expone un cliente de Telethon ya iniciado.
 
-    Uso:
-        with TelethonAdapter() as client:
-            # usar client (instancia de TelegramClient)
+    Si `BOT_TOKEN` está presente en el entorno se intentará iniciar como bot
+    (`client.start(bot_token=...)`). En caso contrario se inicia la sesión de
+    usuario y Telethon podrá pedir el número de teléfono y el código.
+
+    El adaptador captura errores comunes (ej. número de teléfono inválido)
+    y los convierte en mensajes más claros para el usuario.
     """
 
     def __init__(self, session_name: str = SESSION_NAME, api_id: int = API_ID, api_hash: str = API_HASH):
@@ -19,8 +23,18 @@ class TelethonAdapter(AbstractContextManager):
 
     def __enter__(self):
         self.client = TelegramClient(self._session, self._api_id, self._api_hash)
-        # Telethon client soporta .start() o usarse como context manager
-        self.client.start()
+        try:
+            if BOT_TOKEN:
+                # iniciar como bot evita pedir teléfono
+                self.client.start(bot_token=BOT_TOKEN)
+            else:
+                # para cuentas de usuario Telethon pedirá teléfono/código si no hay sesión
+                self.client.start()
+        except errors.rpcerrorlist.PhoneNumberInvalidError:
+            raise RuntimeError("El número de teléfono proporcionado es inválido. Usa formato internacional completo, por ejemplo: +34123456789.")
+        except Exception:
+            # Re-raise to allow caller to see original Telethon exceptions if needed
+            raise
         return self.client
 
     def __exit__(self, exc_type, exc, tb):
