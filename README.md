@@ -1,53 +1,99 @@
-telegram-scraper-anime
+# telegram-scraper-anime
 
-Este proyecto permite descargar y gestionar contenido multimedia (videos e imágenes) de canales de Telegram, especialmente orientado a anime, y automatizar su procesamiento y subida a otros servicios.
+Proyecto para buscar y descargar contenido multimedia (videos/imágenes) desde canales de Telegram, enfocado en material de anime. Incluye utilidades para organizar archivos, almacenar metadatos, y subir archivos a un servidor externo.
 
-REQUISITOS
+**Features:**
+- **Descarga de medios:** descarga imágenes y videos de canales o búsquedas dentro de un canal.
+- **Soporte a álbumes:** detecta y descarga todos los elementos de un álbum (grouped_id).
+- **Base de datos ligera:** guarda metadatos en JSON o en SQLite (`db_manager.py`) para seguimiento de estado (descargado/subido/compartido).
+- **Subida remota:** utilidades para enviar archivos a un servidor externo (`uploader.py`).
 
-Python 3.8+
-Telethon
-Variables de entorno configuradas en un archivo .env (ver .env.example)
-CONFIGURACIÓN
+**Requisitos:**
+- Python 3.8+
+- Dependencias: ver `requirements.txt` (ej. `telethon`, `requests`, `python-dotenv`, `filelock`).
+- Un archivo de variables de entorno `.env` con credenciales (ver `config.py`).
 
-Renombra .env.example a .env y completa tus credenciales de Telegram y otros servicios.
-Instala las dependencias: pip install -r requirements.txt
-SCRIPTS
+**Instalación rápida:**
+```bash
+python -m venv venv
+source venv/Scripts/activate    # en Windows + bash.exe
+pip install -r requirements.txt
+```
 
-main.py
+**Configuración:**
+- Crea un archivo `.env` con las variables requeridas. `config.py` carga estas variables con `python-dotenv`. Entidades importantes:
+	- `API_ID`, `API_HASH` (credenciales de Telegram)
+	- `SESSION_NAME` (nombre de la sesión de Telethon)
+	- `API_KEY`, `API_URL`, `API_WEBHOOK_URL`, etc. (según integraciones)
+	- `MAX_CAPS` (límite de procesamiento, opcional)
 
-Función: Automatiza el flujo completo: descarga videos de Telegram, los sube a un servidor externo y actualiza la base de datos.
+**Principales scripts / módulos:**
+- `download_channel_media.py` : Descarga imágenes y videos de un canal. Uso:
+	```bash
+	python download_channel_media.py <canal>|<username>|<id> [limite] [texto_busqueda]
+	```
+	Crea la estructura `downloads/<canal>/(images|videos)/` y un `db_<canal>.json` con metadatos.
+- `download_chanel_media_by_text.py` : Variante para buscar por texto/hashtag y descargar solo mensajes coincidentes.
+- `telegram_client.py` : Funciones utilitarias para listar canales, obtener mensajes y descargar media (cliente simple de Telethon).
+- `telegram_facade.py` : Fachada para manejar múltiples canales con handlers específicos (`Anime.AnimeChannelHandle`).
+- `uploader.py` : Lógica para obtener un servidor de subida y enviar archivos.
+- `db_manager.py` : Implementa una base SQLite (`AnimeDB`) para llevar control más estructurado de animes, capítulos y estados.
+- `config.py` : Carga variables de entorno con `dotenv`.
 
-Uso: python main.py
+- Nuevos entrypoints (arquitectura hexagonal):
+	- `search_by_string.py` : Busca por texto/hashtag en un canal y descarga la media coincidente.
+		```bash
+		python search_by_string.py <canal> [limite] "texto_busqueda"
+		```
+	- `download_all_media.py` : Descarga todas las medias recientes de un canal.
+		```bash
+		python download_all_media.py <canal> [limite]
+		```
+	- `download_by_message_id.py` : Descarga la media de un mensaje específico por su ID.
+		```bash
+		python download_by_message_id.py <canal> <message_id> [out_folder]
+		```
 
-Procesa hasta MAX_CAPS capítulos por ejecución (configurable en .env).
-Guarda logs de ejecución en historico_ejecuciones.log.
-download_channel_media.py
+Estas entradas son scripts mínimos (entrypoints). La lógica se encuentra en `app/adapters/telethon_adapter.py` y `app/usecases/media_downloader.py`.
 
-Función: Descarga todos los videos e imágenes de un canal de Telegram, guardando los metadatos en un archivo JSON.
+**Uso básico (ejemplos):**
+- Descargar medios de un canal (100 mensajes por defecto):
+	```bash
+	python download_channel_media.py el_nombre_del_canal 100
+	```
+- Descargar por texto/hashtag:
+	```bash
+	python download_channel_media.py el_nombre_del_canal 200 "#miEtiqueta"
+	```
+- Subir un archivo (ejemplo desde Python):
+	```py
+	from uploader import subir_video
+	subir_video('downloads/mi_canal/videos/video_...mp4', title='Capítulo 1')
+	```
 
-Uso: python download_channel_media.py <nombre_canal|username|id> [limite]
+**Estructura del repositorio (archivos clave):**
+- `download_channel_media.py` — Descarga y organiza archivos en `downloads/`.
+- `download_chanel_media_by_text.py` — Descarga filtrada por texto.
+- `telegram_client.py` — Helpers y funciones de descarga.
+- `telegram_facade.py` — Fachada para manejar canales con handlers.
+- `uploader.py` — Subida a servicio externo.
+- `db_manager.py` — Manejo de SQLite para seguimiento de animes/capitulos.
+- `requirements.txt` — Dependencias.
 
-Ejemplo: python download_channel_media.py Miagreyxox 50 python download_channel_media.py 123456789 100
+**Notas y buenas prácticas:**
+- No ejecutar varios procesos que usen la misma sesión de Telethon simultáneamente.
+- Asegúrate de tener permisos y respetar las políticas de contenido y copyright al descargar y distribuir archivos.
+- Algunos scripts pueden escribir rutas con barras escapadas en JSON para compatibilidad en Windows.
 
-Crea la estructura: downloads/<canal>/images/ downloads/<canal>/videos/ downloads/<canal>/db_<canal>.json
+**Tests:**
+- Hay tests básicos para los usecases en `tests/test_media_usecases.py` que usan un cliente simulado. Ejecuta:
+	```bash
+	pip install -r requirements.txt
+	pytest -q
+	```
 
-download_chanel_media_by_text.py
+Si quieres, puedo:
+- Añadir ejemplos de `.env` o validar que `config.py` cubra todas las variables.
+- Añadir instrucciones para usar `db_manager.py` desde la línea de comandos.
 
-Función: Descarga solo los mensajes que coincidan con un texto de búsqueda (por ejemplo, un hashtag o palabra clave). Soporta álbumes (colecciones) de Telegram y guarda los archivos en un subdirectorio con el nombre de la búsqueda.
-
-Uso: python download_chanel_media_by_text.py <nombre_canal|username|id> [limite] [texto_busqueda]
-
-Ejemplo: python download_chanel_media_by_text.py melissajordan1 50 "#LilyPhillips"
-
-Estructura de carpetas: downloads/<canal>/<texto_busqueda>/images/ downloads/<canal>/<texto_busqueda>/videos/ downloads/<canal>/<texto_busqueda>/db_<canal>.json
-
-Si el texto de búsqueda coincide con un mensaje de un álbum, descarga todos los elementos del álbum.
-
-NOTAS
-
-Los scripts usan la sesión de Telethon, asegúrate de no ejecutar varios a la vez con la misma sesión.
-Si tienes problemas con caracteres especiales en nombres de carpetas, el script los reemplaza automáticamente.
-El archivo de base de datos (db_<canal>.json) contiene los metadatos de los archivos descargados.
-LICENCIA
-
-MIT
+**Licencia:** MIT
